@@ -38,7 +38,7 @@
       <section id="adminCreateCard" class="card hidden"><h2>Neues Training erstellen</h2><div class="grid"><div><label>Datum</label><input id="trainingDate" type="date"></div><div><label>Von</label><input id="trainingStart" type="time"></div><div><label>Bis</label><input id="trainingEnd" type="time"></div><div><label>Max. Teilnehmer</label><input id="trainingLimit" type="number" min="1" value="12"></div></div><label>Notizen</label><textarea id="trainingNotes"></textarea><button id="saveTraining">Training speichern</button></section>
       <section class="card">
         <div class="box" style="margin-bottom:14px;background:#f0fdf4;border-color:#bbf7d0">
-          <button id="showMemberTrainingsBtn" class="secondary">Meine Trainings</button>
+          <button id="showMemberTrainingsBtn" class="secondary">Meine Trainings</button><button id="showNextTrainingBtn" class="secondary">Next Training</button>
           <div id="memberExportBox" class="hidden">
             <label>Teilnehmer auswählen</label>
             <select id="memberExportSelect"><option value="">Bitte auswählen...</option></select>
@@ -224,7 +224,7 @@ function upcomingTrainingsForNextDate(){
 function renderNextTrainingsOverview(){
   if(currentView!=='user' || selectedTraining) return;
   const nextTrainings=upcomingTrainingsForNextDate();
-  $('detailTitle').textContent='Nächste Trainings';
+  $('detailTitle').textContent='Next Training';
   if(!nextTrainings.length){
     $('trainingDetail').innerHTML='<p class="muted">Keine kommenden Trainings vorhanden.</p>';
     return;
