@@ -69,7 +69,7 @@
 
 <div id="whatsappModal" class="modal"><div class="modal-box" style="max-width:420px;text-align:center"><h2>WhatsApp</h2><p>Hast du WhatsApp?</p><div class="actions"><button id="whatsappYesBtn" class="success">Ja</button><button id="whatsappNoBtn" class="secondary">Nein</button></div></div></div>
 
-<div id="multiModal" class="modal"><div class="modal-box"><h2>Mehrere Trainings anmelden?</h2><p class="muted">Das zuerst gewählte Training ist bereits ausgewählt. Wähle weitere Trainings aus, falls gewünscht.</p><div id="multiTrainingList"></div><div class="actions"><button id="multiConfirmBtn" class="success">Auswahl anmelden</button><button id="multiSkipBtn" class="secondary">Nur dieses Training</button></div></div></div>
+<div id="multiModal" class="modal"><div class="modal-box"><h2>Mehrere Trainings anmelden?</h2><p class="muted">Das zuerst gewählte Training ist bereits ausgewählt. Bis zum Start der allerersten Trainingseinheit gilt: pro Teilnehmer nur eine Anmeldung pro Kalenderwoche. Danach gilt diese Einschränkung nicht mehr.</p><div id="multiTrainingList"></div><div class="actions"><button id="multiConfirmBtn" class="success">Auswahl anmelden</button><button id="multiSkipBtn" class="secondary">Nur dieses Training</button></div></div></div>
 
 <div id="successModal" class="modal"><div class="modal-box" style="max-width:380px;text-align:center"><h2>✅ Erfolgreich eingetragen</h2><p id="successText">Die Anmeldung wurde gespeichert.</p><button id="successOkBtn">OK</button></div></div>
 
@@ -321,6 +321,13 @@ async function completeRegistration(useMulti){
 
   let saved=0, errors=[];
   for(const trainingId of pendingRegistration.trainingIds){
+    const blockedByWeeklyRule = await participantHasWeeklyRegistrationBeforeFirstTraining(participantId, trainingId);
+    if(blockedByWeeklyRule){
+      const t=trainings.find(x=>x.id===trainingId);
+      errors.push('Wochenregel: Vor Beginn der allerersten Trainingseinheit darf ein Teilnehmer pro Woche nur einmal angemeldet sein' + (t ? ' ('+fmt(t)+')' : '') + '.');
+      continue;
+    }
+
     const {error}=await supabaseClient.from('registrations').insert({training_id:trainingId,participant_id:participantId});
 
     if(error) {
@@ -444,6 +451,70 @@ function publicChangeWindowOpen(t){
   return Date.now() <= end.getTime() + 48*60*60*1000;
 }
 
+function weekStartMonday(dateStr){
+  const d=new Date(`${dateStr}T00:00:00`);
+  if(isNaN(d.getTime())) return null;
+  const day=(d.getDay()+6)%7; // Montag=0
+  d.setDate(d.getDate()-day);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function sameCalendarWeek(aDateStr,bDateStr){
+  const a=weekStartMonday(aDateStr);
+  const b=weekStartMonday(bDateStr);
+  if(!a || !b) return false;
+  return a.getTime()===b.getTime();
+}
+
+function trainingsInSameWeek(trainingId){
+  const base=trainings.find(t=>t.id===trainingId);
+  if(!base?.date) return [];
+  return trainings.filter(t=>sameCalendarWeek(t.date, base.date));
+}
+
+function firstTrainingOverall(){
+  if(!trainings.length) return null;
+  return trainings
+    .slice()
+    .sort((a,b)=>{
+      const ad=trainingStartsAt(a)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const bd=trainingStartsAt(b)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return ad-bd;
+    })[0];
+}
+
+function beforeFirstTrainingOverall(){
+  const first=firstTrainingOverall();
+  const start=trainingStartsAt(first);
+  if(!start) return false;
+  return Date.now() < start.getTime();
+}
+
+async function participantHasWeeklyRegistrationBeforeFirstTraining(participantId, trainingId){
+  if(!participantId || !trainingId) return false;
+
+  // Regel gilt nur bis zum Beginn der allerersten Trainingseinheit im gesamten Trainingsplan.
+  if(!beforeFirstTrainingOverall()) return false;
+
+  const weekTrainingIds=trainingsInSameWeek(trainingId).map(t=>t.id);
+  if(!weekTrainingIds.length) return false;
+
+  const {data,error}=await supabaseClient
+    .from('registrations')
+    .select('id,status,training_id')
+    .eq('participant_id',participantId)
+    .in('training_id',weekTrainingIds)
+    .eq('status','registered');
+
+  if(error){
+    alert('Wochenregel konnte nicht geprüft werden: '+error.message);
+    return true;
+  }
+
+  return (data||[]).some(r=>r.training_id!==trainingId);
+}
+
 function renderCancelCell(registrationId){
   if(!publicChangeWindowOpen(selectedTraining)){
     return '<span class="muted">Nur Admin</span>';
@@ -528,6 +599,11 @@ async function addSelectedParticipantToTraining(){
   if(!selectedTraining) return alert('Bitte zuerst ein Training auswählen.');
   const participantId=$('adminAddParticipantSelect')?.value;
   if(!participantId) return alert('Bitte einen Teilnehmer auswählen.');
+  const blockedByWeeklyRule = await participantHasWeeklyRegistrationBeforeFirstTraining(participantId, selectedTraining.id);
+  if(blockedByWeeklyRule){
+    return alert('Wochenregel: Vor Beginn der allerersten Trainingseinheit darf ein Teilnehmer pro Woche nur einmal angemeldet sein.');
+  }
+
   const {error}=await supabaseClient.from('registrations').insert({training_id:selectedTraining.id,participant_id:participantId});
   if(error){
     if(String(error.message||'').includes('duplicate key')) return alert('Dieser Teilnehmer ist für dieses Training bereits angemeldet.');
