@@ -373,7 +373,7 @@ async function completeRegistration(useMulti){
   }
 }
 
-async function createTraining(){if(currentProfile?.role!=='admin')return alert('Nur Admin.'); const date=$('trainingDate').value,start_time=$('trainingStart').value,end_time=$('trainingEnd').value,max_participants=Number($('trainingLimit').value),notes=$('trainingNotes').value.trim(); if(!date||!start_time||!end_time||!max_participants)return alert('Bitte alle Pflichtfelder ausfüllen.'); const {error}=await supabaseClient.from('trainings').insert({date,start_time,end_time,max_participants,notes}); if(error)return alert(error.message); await loadTrainings(); renderSummary()}
+async function createTraining(){if(currentProfile?.role!=='admin')return alert('Nur Admin.'); const date=$('trainingDate').value,start_time=$('trainingStart').value,end_time=$('trainingEnd').value,max_participants=Number($('trainingLimit').value),notes=$('trainingNotes').value.trim(); if(!date||!start_time||!end_time||!max_participants)return alert('Bitte alle Pflichtfelder ausfüllen.'); const {error}=await supabaseClient.from('trainings').insert({date,start_time,end_time,max_participants,notes}); if(error)return alert('Supabase Fehler: '+error.message); await loadTrainings(); renderSummary()}
 function openEditTraining(id){
   if(currentProfile?.role!=='admin') return alert('Nur Admin.');
   const t=trainings.find(x=>x.id===id);
@@ -416,7 +416,7 @@ async function copyTraining(id){
   renderSummary();
 }
 
-async function deleteTraining(id){if(!confirm('Training wirklich löschen?'))return; const {error}=await supabaseClient.from('trainings').delete().eq('id',id); if(error)return alert(error.message); selectedTraining=null; await loadTrainings(); renderSummary()}
+async function deleteTraining(id){if(!confirm('Training wirklich löschen?'))return; const {error}=await supabaseClient.from('trainings').delete().eq('id',id); if(error)return alert('Supabase Fehler: '+error.message); selectedTraining=null; await loadTrainings(); renderSummary()}
 function trainingStartsAt(t){
   if(!t?.date || !t?.start_time) return null;
   const time=String(t.start_time).slice(0,5) || '00:00';
@@ -470,7 +470,7 @@ async function adminDeleteRegistration(id){
   if(!['admin','trainer'].includes(currentProfile?.role)) return alert('Nur Admin oder Trainer.');
   if(!confirm('Eintrag wirklich entfernen?')) return;
   const {error}=await supabaseClient.from('registrations').delete().eq('id',id);
-  if(error)return alert(error.message);
+  if(error)return alert('Eintrag konnte nicht gelöscht werden. Supabase Fehler: '+error.message+'\n\nPrüfe die DELETE Policy auf registrations.');
   await loadTrainings();
   if(selectedTraining) await selectTraining(selectedTraining.id);
 }
@@ -487,7 +487,7 @@ async function cancelRegistration(id){
   // Mehr als 48h vor Trainingsbeginn: Anmeldung wird vollständig entfernt.
   if(ok48){
     const {error}=await supabaseClient.from('registrations').delete().eq('id',id);
-    if(error)return alert(error.message);
+    if(error)return alert('Supabase Fehler: '+error.message);
     alert('Die Anmeldung wurde entfernt, da die 48h-Regel eingehalten wurde.');
     await loadTrainings();
     if(selectedTraining) await selectTraining(selectedTraining.id);
@@ -512,7 +512,7 @@ async function confirmCancelWithin48h(){
     .from('registrations')
     .update({status:'cancelled', cancelled_at:new Date().toISOString()})
     .eq('id',id);
-  if(error)return alert(error.message);
+  if(error)return alert('Platz konnte nicht freigegeben werden. Supabase Fehler: '+error.message+'\n\nPrüfe die UPDATE Policy auf registrations.');
   alert('Du bist abgemeldet. Dein Platz wurde freigegeben.');
   await loadTrainings();
   if(selectedTraining) await selectTraining(selectedTraining.id);
@@ -740,7 +740,7 @@ function toggleMemberExportBox(){
 }
 
 async function loadProfiles(){const {data,error}=await supabaseClient.from('profiles').select('*').order('created_at'); if(error){$('profilesList').innerHTML='<p class="muted">'+esc(error.message)+'</p>';return} $('profilesList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Rolle</th><th>User-ID</th></tr></thead><tbody>${(data||[]).map(p=>`<tr><td>${esc(p.full_name)}</td><td>${esc(p.role)}</td><td>${esc(p.id)}</td></tr>`).join('')}</tbody></table></div>`}
-async function saveProfile(){if(currentProfile?.role!=='admin')return; const id=$('profileId').value.trim(), full_name=$('profileName').value.trim(), role=$('profileRole').value; if(!id||!full_name)return alert('User-ID und Name eingeben.'); const {error}=await supabaseClient.from('profiles').upsert({id,full_name,role}); if(error)return alert(error.message); await loadProfiles()}
+async function saveProfile(){if(currentProfile?.role!=='admin')return; const id=$('profileId').value.trim(), full_name=$('profileName').value.trim(), role=$('profileRole').value; if(!id||!full_name)return alert('User-ID und Name eingeben.'); const {error}=await supabaseClient.from('profiles').upsert({id,full_name,role}); if(error)return alert('Supabase Fehler: '+error.message); await loadProfiles()}
 async function renderSummary(){const {data:parts}=await supabaseClient.from('participants').select('id'); const {data:regs}=await supabaseClient.from('registrations').select('id,status'); $('summary').innerHTML=`<div class="box"><div class="num">${trainings.length}</div><div class="muted">Trainings</div></div><div class="box"><div class="num">${parts?.length||0}</div><div class="muted">Teilnehmer</div></div><div class="box"><div class="num">${(regs||[]).filter(r=>r.status==='registered').length}</div><div class="muted">Aktive Anmeldungen</div></div>`}
 async function loadTeacher(){const d=$('teacherDate').value; const todays=trainings.filter(t=>t.date===d); let html=''; for(const t of todays){const {data}=await supabaseClient.from('registrations').select('participants(first_name,last_name,phone,email),status').eq('training_id',t.id).eq('status','registered'); html+=`<div class="training"><h3>${esc(fmt(t))}</h3><p class="muted">${(data||[]).length}/${t.max_participants}</p>${(data||[]).map(r=>`<div class="box">${esc(r.participants?.first_name)} ${esc(r.participants?.last_name)} · ${esc(r.participants?.phone||r.participants?.email||'')}</div>`).join('')||'<p class="muted">Keine Teilnehmer.</p>'}</div>`} $('teacherList').innerHTML=html||'<p class="muted">Für dieses Datum sind keine Trainings vorhanden.</p>'}
 
@@ -757,8 +757,8 @@ async function deleteParticipantsList(){
   $('trainingDetail').innerHTML='<p class="muted">Teilnehmerliste wurde gelöscht.</p>';
   alert('Teilnehmerliste wurde gelöscht.');
 }
-async function exportParticipants(){const {data,error}=await supabaseClient.from('participants').select('*').order('last_name'); if(error)return alert(error.message); download('tck_teilnehmer.csv','Vorname;Nachname;E-Mail;Telefonnummer;TCK Mitglied;Whatsapp\n'+(data||[]).map(p=>[p.first_name,p.last_name,p.email,p.phone,p.tck_member?'Ja':'Nein',p.whatsapp_allowed?'Ja':'Nein'].map(csvCell).join(';')).join('\n'),'text/csv;charset=utf-8')}
-async function exportVisits(){const {data,error}=await supabaseClient.from('registrations').select('status,created_at,trainings(date,start_time,end_time),participants(first_name,last_name,email)').order('created_at'); if(error)return alert(error.message); download('tck_trainingsbesuche.csv','Datum;Von;Bis;Vorname;Nachname;E-Mail;Status;Anmeldung\n'+(data||[]).map(r=>[r.trainings?.date,r.trainings?.start_time,r.trainings?.end_time,r.participants?.first_name,r.participants?.last_name,r.participants?.email,statusLabel(r.status),r.created_at].map(csvCell).join(';')).join('\n'),'text/csv;charset=utf-8')}
+async function exportParticipants(){const {data,error}=await supabaseClient.from('participants').select('*').order('last_name'); if(error)return alert('Supabase Fehler: '+error.message); download('tck_teilnehmer.csv','Vorname;Nachname;E-Mail;Telefonnummer;TCK Mitglied;Whatsapp\n'+(data||[]).map(p=>[p.first_name,p.last_name,p.email,p.phone,p.tck_member?'Ja':'Nein',p.whatsapp_allowed?'Ja':'Nein'].map(csvCell).join(';')).join('\n'),'text/csv;charset=utf-8')}
+async function exportVisits(){const {data,error}=await supabaseClient.from('registrations').select('status,created_at,trainings(date,start_time,end_time),participants(first_name,last_name,email)').order('created_at'); if(error)return alert('Supabase Fehler: '+error.message); download('tck_trainingsbesuche.csv','Datum;Von;Bis;Vorname;Nachname;E-Mail;Status;Anmeldung\n'+(data||[]).map(r=>[r.trainings?.date,r.trainings?.start_time,r.trainings?.end_time,r.participants?.first_name,r.participants?.last_name,r.participants?.email,statusLabel(r.status),r.created_at].map(csvCell).join(';')).join('\n'),'text/csv;charset=utf-8')}
 function parseCsvLine(line, delimiter=';'){
   const out=[]; let cur=''; let inQuotes=false;
   for(let i=0;i<line.length;i++){
