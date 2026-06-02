@@ -921,7 +921,50 @@ function toggleMemberExportBox(){
 
 async function loadProfiles(){const {data,error}=await supabaseClient.from('profiles').select('*').order('created_at'); if(error){$('profilesList').innerHTML='<p class="muted">'+esc(error.message)+'</p>';return} $('profilesList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Rolle</th><th>User-ID</th></tr></thead><tbody>${(data||[]).map(p=>`<tr><td>${esc(p.full_name)}</td><td>${esc(p.role)}</td><td>${esc(p.id)}</td></tr>`).join('')}</tbody></table></div>`}
 async function saveProfile(){if(currentProfile?.role!=='admin')return; const id=$('profileId').value.trim(), full_name=$('profileName').value.trim(), role=$('profileRole').value; if(!id||!full_name)return alert('User-ID und Name eingeben.'); const {error}=await supabaseClient.from('profiles').upsert({id,full_name,role}); if(error)return alert('Supabase Fehler: '+error.message); await loadProfiles()}
-async function renderSummary(){const {data:parts}=await supabaseClient.from('participants').select('id'); const {data:regs}=await supabaseClient.from('registrations').select('id,status'); $('summary').innerHTML=`<div class="box"><div class="num">${trainings.length}</div><div class="muted">Trainings</div></div><div class="box"><div class="num">${parts?.length||0}</div><div class="muted">Teilnehmer</div></div><div class="box"><div class="num">${(regs||[]).filter(r=>r.status==='registered').length}</div><div class="muted">Aktive Anmeldungen</div></div>`}
+async function renderSummary(){
+  const {data:parts}=await supabaseClient.from('participants').select('id');
+  const {data:regs,error:regsErr}=await supabaseClient
+    .from('registrations')
+    .select('id,status,created_at,cancelled_at,trainings(date,start_time,end_time)');
+
+  const rows=regs||[];
+  const cancelledRows=rows.filter(r=>r.status==='cancelled');
+
+  function startFromTraining(t){
+    if(!t?.date || !t?.start_time) return null;
+    const d=new Date(`${t.date}T${String(t.start_time).slice(0,5)}:00`);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function changeTime(r){
+    const d=new Date(r.cancelled_at || r.created_at);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const changesBefore48=cancelledRows.filter(r=>{
+    const start=startFromTraining(r.trainings||{});
+    const changed=changeTime(r);
+    if(!start || !changed) return false;
+    return (start.getTime() - changed.getTime()) >= 48*60*60*1000;
+  }).length;
+
+  const changesAfter48=cancelledRows.filter(r=>{
+    const start=startFromTraining(r.trainings||{});
+    const changed=changeTime(r);
+    if(!start || !changed) return false;
+    return (start.getTime() - changed.getTime()) < 48*60*60*1000;
+  }).length;
+
+  $('summary').innerHTML=`
+    <div class="box"><div class="num">${trainings.length}</div><div class="muted">Trainingseinheiten</div></div>
+    <div class="box"><div class="num">${parts?.length||0}</div><div class="muted">Teilnehmer</div></div>
+    <div class="box"><div class="num">${cancelledRows.length}</div><div class="muted">Abmeldungen</div></div>
+    <div class="box"><div class="num">${changesBefore48}</div><div class="muted">Änderungen vor 48h</div></div>
+    <div class="box"><div class="num">${changesAfter48}</div><div class="muted">Änderungen nach 48h</div></div>
+  `;
+
+  if(regsErr) console.warn('Zusammenfassung konnte nicht vollständig geladen werden:', regsErr.message);
+}
 async function loadTeacher(){const d=$('teacherDate').value; const todays=trainings.filter(t=>t.date===d); let html=''; for(const t of todays){const {data}=await supabaseClient.from('registrations').select('participants(first_name,last_name,phone,email),status').eq('training_id',t.id).eq('status','registered'); html+=`<div class="training"><h3>${esc(fmt(t))}</h3><p class="muted">${(data||[]).length}/${t.max_participants}</p>${(data||[]).map(r=>`<div class="box">${esc(r.participants?.first_name)} ${esc(r.participants?.last_name)} · ${esc(r.participants?.phone||r.participants?.email||'')}</div>`).join('')||'<p class="muted">Keine Teilnehmer.</p>'}</div>`} $('teacherList').innerHTML=html||'<p class="muted">Für dieses Datum sind keine Trainings vorhanden.</p>'}
 
 async function deleteParticipantsList(){
