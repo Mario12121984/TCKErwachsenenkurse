@@ -38,7 +38,7 @@
       <section id="adminCreateCard" class="card hidden"><h2>Neues Training erstellen</h2><div class="grid"><div><label>Datum</label><input id="trainingDate" type="date"></div><div><label>Von</label><input id="trainingStart" type="time"></div><div><label>Bis</label><input id="trainingEnd" type="time"></div><div><label>Max. Teilnehmer</label><input id="trainingLimit" type="number" min="1" value="12"></div></div><label>Notizen</label><textarea id="trainingNotes"></textarea><button id="saveTraining">Training speichern</button></section>
       <section class="card">
         <div class="box" style="margin-bottom:14px;background:#f0fdf4;border-color:#bbf7d0">
-          <button id="showMemberTrainingsBtn" class="secondary">Meine Trainings</button>
+          <button id="showMemberTrainingsBtn" class="secondary">Meine Trainings</button><button id="showNextTrainingBtn" class="secondary">Next Training</button>
           <div id="memberExportBox" class="hidden">
             <label>Teilnehmer auswählen</label>
             <select id="memberExportSelect"><option value="">Bitte auswählen...</option></select>
@@ -224,7 +224,7 @@ function upcomingTrainingsForNextDate(){
 function renderNextTrainingsOverview(){
   if(currentView!=='user' || selectedTraining) return;
   const nextTrainings=upcomingTrainingsForNextDate();
-  $('detailTitle').textContent='Nächste Trainings';
+  $('detailTitle').textContent='Next Training';
   if(!nextTrainings.length){
     $('trainingDetail').innerHTML='<p class="muted">Keine kommenden Trainings vorhanden.</p>';
     return;
@@ -938,6 +938,22 @@ async function deleteParticipantsList(){
   alert('Teilnehmerliste wurde gelöscht.');
 }
 async function exportParticipants(){const {data,error}=await supabaseClient.from('participants').select('*').order('last_name'); if(error)return alert('Supabase Fehler: '+error.message); download('tck_teilnehmer.csv','Vorname;Nachname;E-Mail;Telefonnummer;TCK Mitglied;Whatsapp\n'+(data||[]).map(p=>[p.first_name,p.last_name,p.email,p.phone,p.tck_member?'Ja':'Nein',p.whatsapp_allowed?'Ja':'Nein'].map(csvCell).join(';')).join('\n'),'text/csv;charset=utf-8')}
+function exportDateTime(value){
+  if(!value) return '';
+  const d=new Date(value);
+  if(isNaN(d.getTime())) return String(value);
+  return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+
+function exportTrainingDateTime(t){
+  if(!t?.date) return '';
+  const d=new Date(t.date+'T00:00:00');
+  const datum=isNaN(d.getTime()) ? String(t.date) : String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear();
+  const von=String(t.start_time||'').slice(0,5);
+  const bis=String(t.end_time||'').slice(0,5);
+  return datum+' '+von+(bis?'-'+bis:'');
+}
+
 async function exportVisits(){
   const {data,error}=await supabaseClient
     .from('registrations')
@@ -946,68 +962,47 @@ async function exportVisits(){
 
   if(error)return alert('Supabase Fehler: '+error.message);
 
-  function pad2(n){ return String(n).padStart(2,'0'); }
-
-  function formatDateTime(dateValue, timeValue){
-    if(!dateValue) return '';
-    const d=new Date(String(dateValue)+'T'+String(timeValue||'00:00').slice(0,5)+':00');
-    if(isNaN(d.getTime())) return String(dateValue)+' '+String(timeValue||'').slice(0,5);
-    return pad2(d.getDate())+'.'+pad2(d.getMonth()+1)+'.'+d.getFullYear()+' '+pad2(d.getHours())+':'+pad2(d.getMinutes());
-  }
-
-  function formatTimestamp(value){
-    if(!value) return '';
-    const d=new Date(value);
-    if(isNaN(d.getTime())) return String(value);
-    return pad2(d.getDate())+'.'+pad2(d.getMonth()+1)+'.'+d.getFullYear()+' '+pad2(d.getHours())+':'+pad2(d.getMinutes());
-  }
-
-  function exportStatusLabel(r){
-    if(r.status === 'cancelled') return 'Platz freigegeben';
-    if(r.status === 'confirmed' || r.status === 'confirmed_attended' || r.status === 'attended') return 'Bestätigt';
-    return 'Anmeldung';
-  }
-
-  const grouped=new Map();
+  const groups=new Map();
 
   (data||[]).forEach(r=>{
     const p=r.participants||{};
-    const key=String(p.email||'').trim().toLowerCase() || ((p.first_name||'')+'|'+(p.last_name||'')).toLowerCase();
-    if(!grouped.has(key)){
-      grouped.set(key,{
+    const key=String(p.email||'').trim().toLowerCase() || ((p.first_name||'')+'|'+(p.last_name||''));
+    if(!groups.has(key)){
+      groups.set(key,{
         first_name:p.first_name||'',
         last_name:p.last_name||'',
         email:p.email||'',
+        count_registered:0,
         entries:[]
       });
     }
 
-    const trainingDateTime=formatDateTime(r.trainings?.date, r.trainings?.start_time);
-    const actionDateTime = r.status === 'cancelled'
-      ? (formatTimestamp(r.cancelled_at) || formatTimestamp(r.created_at))
-      : formatTimestamp(r.created_at);
+    const g=groups.get(key);
+    const status=r.status||'registered';
+    const trainingText=exportTrainingDateTime(r.trainings||{});
 
-    grouped.get(key).entries.push({
-      sortDate:(r.trainings?.date||'')+' '+String(r.trainings?.start_time||''),
-      text:`${exportStatusLabel(r)}: ${trainingDateTime}${actionDateTime ? ' (erfasst '+actionDateTime+')' : ''}`
-    });
+    if(status==='cancelled'){
+      g.entries.push('Platz freigegeben: '+trainingText+' (Freigabe: '+exportDateTime(r.cancelled_at||r.created_at)+')');
+    } else {
+      g.count_registered++;
+      g.entries.push('Bestätigt: '+trainingText+' (Anmeldung: '+exportDateTime(r.created_at)+')');
+    }
   });
 
-  const rows=[...grouped.values()]
-    .sort((a,b)=>(a.last_name+' '+a.first_name).localeCompare(b.last_name+' '+b.first_name,'de'))
-    .map(p=>{
-      p.entries.sort((a,b)=>String(a.sortDate).localeCompare(String(b.sortDate)));
-      return [
-        p.first_name,
-        p.last_name,
-        p.email,
-        p.entries.length,
-        p.entries.map(e=>e.text).join(' | ')
-      ].map(csvCell).join(';');
-    });
+  const rows=[...groups.values()].sort((a,b)=>
+    (a.last_name+' '+a.first_name).localeCompare(b.last_name+' '+b.first_name)
+  );
 
-  const csv='Vorname;Nachname;E-Mail;Anzahl Trainings;Anmeldungen / Platz freigegeben / Bestätigt mit Datum Uhrzeit\n'+rows.join('\n');
-  download('tck_trainingsbesuche_pro_teilnehmer.csv',csv,'text/csv;charset=utf-8');
+  const header='Vorname;Nachname;E-Mail;Anzahl Trainings;Anmeldungen / Platz freigegeben / bestätigt mit Datum Uhrzeit\n';
+  const body=rows.map(g=>[
+    g.first_name,
+    g.last_name,
+    g.email,
+    g.count_registered,
+    g.entries.join(' | ')
+  ].map(csvCell).join(';')).join('\n');
+
+  download('tck_trainingsbesuche.csv',header+body,'text/csv;charset=utf-8');
 }
 function parseCsvLine(line, delimiter=';'){
   const out=[]; let cur=''; let inQuotes=false;
@@ -1113,6 +1108,17 @@ async function importParticipants(file){
 function exportCalendar(){let ics='BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//TCK Trainings//DE\n'; trainings.forEach(t=>{const ds=t.date.replaceAll('-','')+'T'+String(t.start_time).replaceAll(':','').slice(0,4)+'00'; const de=t.date.replaceAll('-','')+'T'+String(t.end_time).replaceAll(':','').slice(0,4)+'00'; ics+=`BEGIN:VEVENT\nUID:${t.id}@tck\nDTSTAMP:${new Date().toISOString().replace(/[-:]/g,'').split('.')[0]}Z\nDTSTART:${ds}\nDTEND:${de}\nSUMMARY:TCK Training\nDESCRIPTION:${(t.notes||'').replace(/\n/g,' ')}\nEND:VEVENT\n`}); ics+='END:VCALENDAR\n'; download('tck_trainings.ics',ics,'text/calendar;charset=utf-8')}
 function saveSettingsLocal(){const s={title:$('settingsTitle').value,comment:$('settingsComment').value}; const f=$('settingsLogo').files[0]; if(f){const r=new FileReader(); r.onload=()=>{s.logo=r.result;localStorage.setItem('tck_settings',JSON.stringify(s));applyLocalSettings()}; r.readAsDataURL(f)} else {const old=JSON.parse(localStorage.getItem('tck_settings')||'{}'); if(old.logo)s.logo=old.logo; localStorage.setItem('tck_settings',JSON.stringify(s)); applyLocalSettings()}}
 
+
+function showNextTrainingOverview(){
+  selectedTraining = null;
+  currentView = 'user';
+  $('memberExportBox').classList.add('hidden');
+  renderTrainings();
+  renderNextTrainingsOverview();
+  const detail = $('trainingDetail');
+  if(detail) detail.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
 function toggleViewMenu(){ $('viewMenu').classList.toggle('show'); }
 function closeViewMenu(){ if($('viewMenu')) $('viewMenu').classList.remove('show'); }
 document.addEventListener('click', function(e){
@@ -1120,7 +1126,7 @@ document.addEventListener('click', function(e){
   if(!menu || !btn) return;
   if(!menu.contains(e.target) && e.target !== btn) menu.classList.remove('show');
 });
-$('menuBtn').onclick=(e)=>{e.stopPropagation();toggleViewMenu()}; $('firstName').addEventListener('input',handleFirstNameInput); $('firstName').addEventListener('focus',renderParticipantSuggestions); $('participantSuggestionList').addEventListener('click',handleSuggestionClick); document.addEventListener('click',function(e){const box=$('participantSuggestionList'); if(box && !box.contains(e.target) && e.target !== $('firstName')) box.classList.remove('show');}); $('loginBtn').onclick=()=>{closeViewMenu();$('loginCard').classList.toggle('hidden')}; $('doLogin').onclick=login; $('logoutBtn').onclick=()=>{closeViewMenu();logout()}; $('showMemberTrainingsBtn').onclick=toggleMemberExportBox; $('exportMemberCsvBtn').onclick=exportSelectedMemberCsv; $('exportMemberIcsBtn').onclick=exportSelectedMemberIcs; $('memberExportSelect').onchange=renderSelectedMemberTrainings; $('userViewBtn').onclick=()=>setView('user'); $('teacherViewBtn').onclick=()=>setView('teacher'); $('adminViewBtn').onclick=()=>setView('admin'); $('todayBtn').onclick=()=>{$('teacherDate').value=isoToday();loadTeacher()}; $('reloadTeacherBtn').onclick=loadTeacher; $('saveTraining').onclick=createTraining; $('confirmReg').onclick=beginRegistrationFlow; $('cancelReg').onclick=()=>$('regModal').classList.remove('show'); $('reloadParticipants').onclick=loadParticipants; $('saveProfile').onclick=saveProfile; $('exportParticipantsBtn').onclick=exportParticipants; $('deleteParticipantsListBtn').onclick=deleteParticipantsList; $('exportVisitsBtn').onclick=exportVisits; $('saveSettings').onclick=saveSettingsLocal; $('importParticipantsFile').onchange=e=>{if(e.target.files[0])importParticipants(e.target.files[0])}; $('tckYesBtn').onclick=()=>answerTck(true); $('tckNoBtn').onclick=()=>answerTck(false); $('whatsappYesBtn').onclick=()=>answerWhatsapp(true); $('whatsappNoBtn').onclick=()=>answerWhatsapp(false); $('multiConfirmBtn').onclick=()=>completeRegistration(true); $('multiSkipBtn').onclick=()=>completeRegistration(false); $('successOkBtn').onclick=()=>$('successModal').classList.remove('show'); $('confirmCancel48Btn').onclick=confirmCancelWithin48h; $('abortCancel48Btn').onclick=abortCancelWithin48h; $('saveEditParticipantBtn').onclick=saveEditParticipant; $('cancelEditParticipantBtn').onclick=()=>$('editParticipantModal').classList.remove('show'); $('saveEditTrainingBtn').onclick=saveEditTraining; $('cancelEditTrainingBtn').onclick=()=>$('editTrainingModal').classList.remove('show');
+$('menuBtn').onclick=(e)=>{e.stopPropagation();toggleViewMenu()}; $('firstName').addEventListener('input',handleFirstNameInput); $('firstName').addEventListener('focus',renderParticipantSuggestions); $('participantSuggestionList').addEventListener('click',handleSuggestionClick); document.addEventListener('click',function(e){const box=$('participantSuggestionList'); if(box && !box.contains(e.target) && e.target !== $('firstName')) box.classList.remove('show');}); $('loginBtn').onclick=()=>{closeViewMenu();$('loginCard').classList.toggle('hidden')}; $('doLogin').onclick=login; $('logoutBtn').onclick=()=>{closeViewMenu();logout()}; $('showMemberTrainingsBtn').onclick=toggleMemberExportBox; if($('showNextTrainingBtn')) $('showNextTrainingBtn').onclick=showNextTrainingOverview; $('exportMemberCsvBtn').onclick=exportSelectedMemberCsv; $('exportMemberIcsBtn').onclick=exportSelectedMemberIcs; $('memberExportSelect').onchange=renderSelectedMemberTrainings; $('userViewBtn').onclick=()=>setView('user'); $('teacherViewBtn').onclick=()=>setView('teacher'); $('adminViewBtn').onclick=()=>setView('admin'); $('todayBtn').onclick=()=>{$('teacherDate').value=isoToday();loadTeacher()}; $('reloadTeacherBtn').onclick=loadTeacher; $('saveTraining').onclick=createTraining; $('confirmReg').onclick=beginRegistrationFlow; $('cancelReg').onclick=()=>$('regModal').classList.remove('show'); $('reloadParticipants').onclick=loadParticipants; $('saveProfile').onclick=saveProfile; $('exportParticipantsBtn').onclick=exportParticipants; $('deleteParticipantsListBtn').onclick=deleteParticipantsList; $('exportVisitsBtn').onclick=exportVisits; $('saveSettings').onclick=saveSettingsLocal; $('importParticipantsFile').onchange=e=>{if(e.target.files[0])importParticipants(e.target.files[0])}; $('tckYesBtn').onclick=()=>answerTck(true); $('tckNoBtn').onclick=()=>answerTck(false); $('whatsappYesBtn').onclick=()=>answerWhatsapp(true); $('whatsappNoBtn').onclick=()=>answerWhatsapp(false); $('multiConfirmBtn').onclick=()=>completeRegistration(true); $('multiSkipBtn').onclick=()=>completeRegistration(false); $('successOkBtn').onclick=()=>$('successModal').classList.remove('show'); $('confirmCancel48Btn').onclick=confirmCancelWithin48h; $('abortCancel48Btn').onclick=abortCancelWithin48h; $('saveEditParticipantBtn').onclick=saveEditParticipant; $('cancelEditParticipantBtn').onclick=()=>$('editParticipantModal').classList.remove('show'); $('saveEditTrainingBtn').onclick=saveEditTraining; $('cancelEditTrainingBtn').onclick=()=>$('editTrainingModal').classList.remove('show');
 init();
 </script>
 </body>
