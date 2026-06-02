@@ -83,6 +83,18 @@
   </div>
 </div></div>
 
+
+<div id="editParticipantModal" class="modal"><div class="modal-box"><h2>Teilnehmer bearbeiten</h2><input id="editParticipantId" type="hidden">
+<label>Vorname</label><input id="editParticipantFirstName">
+<label>Nachname</label><input id="editParticipantLastName">
+<label>E-Mail</label><input id="editParticipantEmail" type="email">
+<label>Natelnummer</label><input id="editParticipantPhone">
+<div class="grid">
+  <label style="font-weight:normal"><input id="editParticipantTck" type="checkbox" style="width:auto;margin-right:8px">TCK Mitglied</label>
+  <label style="font-weight:normal"><input id="editParticipantWhatsapp" type="checkbox" style="width:auto;margin-right:8px">WhatsApp erlaubt</label>
+</div>
+<div class="actions"><button id="saveEditParticipantBtn" class="success">Teilnehmer speichern</button><button id="cancelEditParticipantBtn" class="secondary">Abbrechen</button></div></div></div>
+
 <div id="editTrainingModal" class="modal"><div class="modal-box"><h2>Training bearbeiten</h2><input id="editTrainingId" type="hidden">
 <label>Datum</label><input id="editTrainingDate" type="date">
 <label>Von</label><input id="editTrainingStart" type="time">
@@ -526,7 +538,57 @@ async function addSelectedParticipantToTraining(){
   await selectTraining(selectedTraining.id);
 }
 
-async function loadParticipants(){const {data,error}=await supabaseClient.from('participants').select('*').order('last_name').limit(1000); if(error){$('participantsList').innerHTML='<p class="muted">'+esc(error.message)+'</p>';return} $('participantsList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>E-Mail</th><th>Natel</th></tr></thead><tbody>${(data||[]).map(p=>`<tr><td>${esc(p.first_name)} ${esc(p.last_name)}</td><td>${esc(p.email)}</td><td>${esc(p.phone)}</td></tr>`).join('')}</tbody></table></div>`}
+async function loadParticipants(){
+  const {data,error}=await supabaseClient.from('participants').select('*').order('last_name').limit(1000);
+  if(error){$('participantsList').innerHTML='<p class="muted">'+esc(error.message)+'</p>';return}
+  const rows=data||[];
+  $('participantsList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Vorname</th><th>Nachname</th><th>E-Mail</th><th>Natel</th><th>TCK</th><th>WhatsApp</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr><td>${esc(p.first_name)}</td><td>${esc(p.last_name)}</td><td>${esc(p.email)}</td><td>${esc(p.phone)}</td><td>${p.tck_member?'Ja':'Nein'}</td><td>${p.whatsapp_allowed?'Ja':'Nein'}</td><td><button class="secondary participant-action" onclick="openEditParticipant('${p.id}')">Bearbeiten</button><button class="danger participant-action" onclick="deleteParticipant('${p.id}')">Löschen</button></td></tr>`).join('')}</tbody></table></div>`
+}
+
+function openEditParticipant(id){
+  if(currentProfile?.role!=='admin') return alert('Nur Admin.');
+  const p=participantCache.find(x=>x.id===id);
+  if(!p) return alert('Teilnehmer nicht gefunden. Bitte aktualisieren.');
+  $('editParticipantId').value=p.id;
+  $('editParticipantFirstName').value=p.first_name||'';
+  $('editParticipantLastName').value=p.last_name||'';
+  $('editParticipantEmail').value=p.email||'';
+  $('editParticipantPhone').value=p.phone||'';
+  $('editParticipantTck').checked=p.tck_member===true;
+  $('editParticipantWhatsapp').checked=p.whatsapp_allowed===true;
+  $('editParticipantModal').classList.add('show');
+}
+
+async function saveEditParticipant(){
+  if(currentProfile?.role!=='admin') return alert('Nur Admin.');
+  const id=$('editParticipantId').value;
+  const payload={
+    first_name:$('editParticipantFirstName').value.trim(),
+    last_name:$('editParticipantLastName').value.trim(),
+    email:$('editParticipantEmail').value.trim(),
+    phone:$('editParticipantPhone').value.trim(),
+    tck_member:$('editParticipantTck').checked,
+    whatsapp_allowed:$('editParticipantWhatsapp').checked
+  };
+  if(!id||!payload.first_name||!payload.last_name||!payload.email) return alert('Vorname, Nachname und E-Mail sind nötig.');
+  const {error}=await supabaseClient.from('participants').update(payload).eq('id',id);
+  if(error) return alert('Teilnehmer konnte nicht gespeichert werden: '+error.message);
+  $('editParticipantModal').classList.remove('show');
+  await loadMemberOptions();
+  await loadParticipants();
+  if(selectedTraining) await selectTraining(selectedTraining.id);
+}
+
+async function deleteParticipant(id){
+  if(currentProfile?.role!=='admin') return alert('Nur Admin.');
+  if(!confirm('Teilnehmer wirklich löschen? Bestehende Anmeldungen werden dadurch ebenfalls entfernt.')) return;
+  const {error}=await supabaseClient.from('participants').delete().eq('id',id);
+  if(error) return alert('Teilnehmer konnte nicht gelöscht werden: '+error.message);
+  await loadMemberOptions();
+  await loadParticipants();
+  await loadTrainings();
+  if(selectedTraining) await selectTraining(selectedTraining.id);
+}
 
 async function loadMemberOptions(){
   const {data,error}=await supabaseClient.from('participants').select('*').order('last_name').limit(1000);
@@ -684,7 +746,107 @@ async function renderSummary(){const {data:parts}=await supabaseClient.from('par
 async function loadTeacher(){const d=$('teacherDate').value; const todays=trainings.filter(t=>t.date===d); let html=''; for(const t of todays){const {data}=await supabaseClient.from('registrations').select('participants(first_name,last_name,phone,email),status').eq('training_id',t.id).eq('status','registered'); html+=`<div class="training"><h3>${esc(fmt(t))}</h3><p class="muted">${(data||[]).length}/${t.max_participants}</p>${(data||[]).map(r=>`<div class="box">${esc(r.participants?.first_name)} ${esc(r.participants?.last_name)} · ${esc(r.participants?.phone||r.participants?.email||'')}</div>`).join('')||'<p class="muted">Keine Teilnehmer.</p>'}</div>`} $('teacherList').innerHTML=html||'<p class="muted">Für dieses Datum sind keine Trainings vorhanden.</p>'}
 async function exportParticipants(){const {data,error}=await supabaseClient.from('participants').select('*').order('last_name'); if(error)return alert(error.message); download('tck_teilnehmer.csv','Vorname;Nachname;E-Mail;Telefonnummer\n'+(data||[]).map(p=>[p.first_name,p.last_name,p.email,p.phone].map(csvCell).join(';')).join('\n'),'text/csv;charset=utf-8')}
 async function exportVisits(){const {data,error}=await supabaseClient.from('registrations').select('status,created_at,trainings(date,start_time,end_time),participants(first_name,last_name,email)').order('created_at'); if(error)return alert(error.message); download('tck_trainingsbesuche.csv','Datum;Von;Bis;Vorname;Nachname;E-Mail;Status;Anmeldung\n'+(data||[]).map(r=>[r.trainings?.date,r.trainings?.start_time,r.trainings?.end_time,r.participants?.first_name,r.participants?.last_name,r.participants?.email,statusLabel(r.status),r.created_at].map(csvCell).join(';')).join('\n'),'text/csv;charset=utf-8')}
-async function importParticipants(file){const text=await file.text(); const lines=text.split(/\r?\n/).filter(Boolean); let count=0; for(const line of lines.slice(1)){const cols=line.split(';').map(x=>x.replace(/^"|"$/g,'').trim()); let first_name,last_name,email,phone; if(cols.length>=5){first_name=cols[0];last_name=cols[1];email=cols[2];phone=cols[3]} else {const name=(cols[0]||'').split(' '); first_name=name.shift()||''; last_name=name.join(' ')||'-'; email=cols[1]; phone=cols[2]} if(first_name&&last_name&&email){const {error}=await supabaseClient.from('participants').upsert({first_name,last_name,email,phone},{onConflict:'email'}); if(!error)count++}} alert(count+' Teilnehmer importiert/aktualisiert.'); loadParticipants(); loadMemberOptions()}
+function parseCsvLine(line, delimiter=';'){
+  const out=[]; let cur=''; let inQuotes=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i], next=line[i+1];
+    if(ch==='"' && inQuotes && next==='"'){ cur+='"'; i++; continue; }
+    if(ch==='"'){ inQuotes=!inQuotes; continue; }
+    if(ch===delimiter && !inQuotes){ out.push(cur.trim()); cur=''; continue; }
+    cur+=ch;
+  }
+  out.push(cur.trim());
+  return out.map(v=>v.replace(/^"|"$/g,'').trim());
+}
+
+function detectDelimiter(line){
+  const semis=(line.match(/;/g)||[]).length;
+  const commas=(line.match(/,/g)||[]).length;
+  return semis>=commas ? ';' : ',';
+}
+
+async function readCsvText(file){
+  const buffer=await file.arrayBuffer();
+  let text=new TextDecoder('utf-8').decode(buffer);
+  if(text.includes('�')) text=new TextDecoder('windows-1252').decode(buffer);
+  return text.replace(/^\uFEFF/,'');
+}
+
+function normalizeHeader(v){
+  return String(v||'').toLowerCase().trim()
+    .replaceAll('ä','ae').replaceAll('ö','oe').replaceAll('ü','ue')
+    .replaceAll('é','e').replaceAll('è','e')
+    .replace(/[^a-z0-9]/g,'');
+}
+
+async function importParticipants(file){
+  const text=await readCsvText(file);
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2) return alert('CSV enthält keine Teilnehmerdaten.');
+
+  const delimiter=detectDelimiter(lines[0]);
+  const header=parseCsvLine(lines[0], delimiter).map(normalizeHeader);
+  const idx={
+    first: header.findIndex(h=>['vorname','firstname'].includes(h)),
+    last: header.findIndex(h=>['nachname','lastname'].includes(h)),
+    name: header.findIndex(h=>['name','vollername','fullname'].includes(h)),
+    email: header.findIndex(h=>['email','emailadresse','e mail','e_mail'].map(normalizeHeader).includes(h)),
+    phone: header.findIndex(h=>['telefonnummer','telefon','natel','phone','mobile','handy'].includes(h))
+  };
+
+  let count=0, skipped=0, errors=[];
+  for(const line of lines.slice(1)){
+    const cols=parseCsvLine(line, delimiter);
+    let first_name='', last_name='', email='', phone='';
+
+    if(idx.first>=0 && idx.last>=0){
+      first_name=cols[idx.first]||'';
+      last_name=cols[idx.last]||'';
+      email=idx.email>=0 ? (cols[idx.email]||'') : (cols[2]||'');
+      phone=idx.phone>=0 ? (cols[idx.phone]||'') : (cols[3]||'');
+    } else if(idx.name>=0){
+      const parts=String(cols[idx.name]||'').trim().split(/\s+/);
+      first_name=parts.shift()||'';
+      last_name=parts.join(' ')||'-';
+      email=idx.email>=0 ? (cols[idx.email]||'') : (cols[1]||'');
+      phone=idx.phone>=0 ? (cols[idx.phone]||'') : (cols[2]||'');
+    } else if(cols.length>=4){
+      // Standard-Export dieser App: Vorname;Nachname;E-Mail;Telefonnummer
+      first_name=cols[0]||'';
+      last_name=cols[1]||'';
+      email=cols[2]||'';
+      phone=cols[3]||'';
+    } else {
+      // Alternative: Name;E-Mail;Telefonnummer
+      const parts=String(cols[0]||'').trim().split(/\s+/);
+      first_name=parts.shift()||'';
+      last_name=parts.join(' ')||'-';
+      email=cols[1]||'';
+      phone=cols[2]||'';
+    }
+
+    first_name=first_name.trim();
+    last_name=(last_name||'-').trim();
+    email=email.trim();
+    phone=phone.trim();
+
+    if(!first_name||!last_name||!email){ skipped++; continue; }
+
+    const {error}=await supabaseClient
+      .from('participants')
+      .upsert({first_name,last_name,email,phone},{onConflict:'email'});
+    if(error) errors.push(`${first_name} ${last_name}: ${error.message}`);
+    else count++;
+  }
+
+  let msg=count+' Teilnehmer importiert/aktualisiert.';
+  if(skipped) msg+='\\n'+skipped+' Zeile(n) übersprungen.';
+  if(errors.length) msg+='\\n\\nFehler:\\n'+errors.slice(0,8).join('\\n');
+  alert(msg);
+  await loadParticipants();
+  await loadMemberOptions();
+}
+
 function exportCalendar(){let ics='BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//TCK Trainings//DE\n'; trainings.forEach(t=>{const ds=t.date.replaceAll('-','')+'T'+String(t.start_time).replaceAll(':','').slice(0,4)+'00'; const de=t.date.replaceAll('-','')+'T'+String(t.end_time).replaceAll(':','').slice(0,4)+'00'; ics+=`BEGIN:VEVENT\nUID:${t.id}@tck\nDTSTAMP:${new Date().toISOString().replace(/[-:]/g,'').split('.')[0]}Z\nDTSTART:${ds}\nDTEND:${de}\nSUMMARY:TCK Training\nDESCRIPTION:${(t.notes||'').replace(/\n/g,' ')}\nEND:VEVENT\n`}); ics+='END:VCALENDAR\n'; download('tck_trainings.ics',ics,'text/calendar;charset=utf-8')}
 function saveSettingsLocal(){const s={title:$('settingsTitle').value,comment:$('settingsComment').value}; const f=$('settingsLogo').files[0]; if(f){const r=new FileReader(); r.onload=()=>{s.logo=r.result;localStorage.setItem('tck_settings',JSON.stringify(s));applyLocalSettings()}; r.readAsDataURL(f)} else {const old=JSON.parse(localStorage.getItem('tck_settings')||'{}'); if(old.logo)s.logo=old.logo; localStorage.setItem('tck_settings',JSON.stringify(s)); applyLocalSettings()}}
 
@@ -695,7 +857,7 @@ document.addEventListener('click', function(e){
   if(!menu || !btn) return;
   if(!menu.contains(e.target) && e.target !== btn) menu.classList.remove('show');
 });
-$('menuBtn').onclick=(e)=>{e.stopPropagation();toggleViewMenu()}; $('firstName').addEventListener('input',handleFirstNameInput); $('firstName').addEventListener('focus',renderParticipantSuggestions); $('participantSuggestionList').addEventListener('click',handleSuggestionClick); document.addEventListener('click',function(e){const box=$('participantSuggestionList'); if(box && !box.contains(e.target) && e.target !== $('firstName')) box.classList.remove('show');}); $('loginBtn').onclick=()=>{closeViewMenu();$('loginCard').classList.toggle('hidden')}; $('doLogin').onclick=login; $('logoutBtn').onclick=()=>{closeViewMenu();logout()}; $('showMemberTrainingsBtn').onclick=toggleMemberExportBox; $('exportMemberCsvBtn').onclick=exportSelectedMemberCsv; $('exportMemberIcsBtn').onclick=exportSelectedMemberIcs; $('memberExportSelect').onchange=renderSelectedMemberTrainings; $('userViewBtn').onclick=()=>setView('user'); $('teacherViewBtn').onclick=()=>setView('teacher'); $('adminViewBtn').onclick=()=>setView('admin'); $('todayBtn').onclick=()=>{$('teacherDate').value=isoToday();loadTeacher()}; $('reloadTeacherBtn').onclick=loadTeacher; $('saveTraining').onclick=createTraining; $('confirmReg').onclick=beginRegistrationFlow; $('cancelReg').onclick=()=>$('regModal').classList.remove('show'); $('reloadParticipants').onclick=loadParticipants; $('saveProfile').onclick=saveProfile; $('exportParticipantsBtn').onclick=exportParticipants; $('exportVisitsBtn').onclick=exportVisits; $('saveSettings').onclick=saveSettingsLocal; $('importParticipantsFile').onchange=e=>{if(e.target.files[0])importParticipants(e.target.files[0])}; $('tckYesBtn').onclick=()=>answerTck(true); $('tckNoBtn').onclick=()=>answerTck(false); $('whatsappYesBtn').onclick=()=>answerWhatsapp(true); $('whatsappNoBtn').onclick=()=>answerWhatsapp(false); $('multiConfirmBtn').onclick=()=>completeRegistration(true); $('multiSkipBtn').onclick=()=>completeRegistration(false); $('successOkBtn').onclick=()=>$('successModal').classList.remove('show'); $('confirmCancel48Btn').onclick=confirmCancelWithin48h; $('abortCancel48Btn').onclick=abortCancelWithin48h; $('saveEditTrainingBtn').onclick=saveEditTraining; $('cancelEditTrainingBtn').onclick=()=>$('editTrainingModal').classList.remove('show');
+$('menuBtn').onclick=(e)=>{e.stopPropagation();toggleViewMenu()}; $('firstName').addEventListener('input',handleFirstNameInput); $('firstName').addEventListener('focus',renderParticipantSuggestions); $('participantSuggestionList').addEventListener('click',handleSuggestionClick); document.addEventListener('click',function(e){const box=$('participantSuggestionList'); if(box && !box.contains(e.target) && e.target !== $('firstName')) box.classList.remove('show');}); $('loginBtn').onclick=()=>{closeViewMenu();$('loginCard').classList.toggle('hidden')}; $('doLogin').onclick=login; $('logoutBtn').onclick=()=>{closeViewMenu();logout()}; $('showMemberTrainingsBtn').onclick=toggleMemberExportBox; $('exportMemberCsvBtn').onclick=exportSelectedMemberCsv; $('exportMemberIcsBtn').onclick=exportSelectedMemberIcs; $('memberExportSelect').onchange=renderSelectedMemberTrainings; $('userViewBtn').onclick=()=>setView('user'); $('teacherViewBtn').onclick=()=>setView('teacher'); $('adminViewBtn').onclick=()=>setView('admin'); $('todayBtn').onclick=()=>{$('teacherDate').value=isoToday();loadTeacher()}; $('reloadTeacherBtn').onclick=loadTeacher; $('saveTraining').onclick=createTraining; $('confirmReg').onclick=beginRegistrationFlow; $('cancelReg').onclick=()=>$('regModal').classList.remove('show'); $('reloadParticipants').onclick=loadParticipants; $('saveProfile').onclick=saveProfile; $('exportParticipantsBtn').onclick=exportParticipants; $('exportVisitsBtn').onclick=exportVisits; $('saveSettings').onclick=saveSettingsLocal; $('importParticipantsFile').onchange=e=>{if(e.target.files[0])importParticipants(e.target.files[0])}; $('tckYesBtn').onclick=()=>answerTck(true); $('tckNoBtn').onclick=()=>answerTck(false); $('whatsappYesBtn').onclick=()=>answerWhatsapp(true); $('whatsappNoBtn').onclick=()=>answerWhatsapp(false); $('multiConfirmBtn').onclick=()=>completeRegistration(true); $('multiSkipBtn').onclick=()=>completeRegistration(false); $('successOkBtn').onclick=()=>$('successModal').classList.remove('show'); $('confirmCancel48Btn').onclick=confirmCancelWithin48h; $('abortCancel48Btn').onclick=abortCancelWithin48h; $('saveEditParticipantBtn').onclick=saveEditParticipant; $('cancelEditParticipantBtn').onclick=()=>$('editParticipantModal').classList.remove('show'); $('saveEditTrainingBtn').onclick=saveEditTraining; $('cancelEditTrainingBtn').onclick=()=>$('editTrainingModal').classList.remove('show');
 init();
 </script>
 </body>
