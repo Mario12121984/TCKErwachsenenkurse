@@ -171,7 +171,7 @@ async function selectTraining(id){
 
   let query = supabaseClient
     .from('registrations')
-    .select('id,status,created_at,cancelled_at,participants(id,first_name,last_name,email,phone)')
+    .select('id,status,created_at,participants(id,first_name,last_name,email,phone)')
     .eq('training_id',id)
     .order('created_at');
 
@@ -323,7 +323,7 @@ async function completeRegistration(useMulti){
         } else if(existing?.status === 'cancelled') {
           const {error:updateErr}=await supabaseClient
             .from('registrations')
-            .update({status:'registered',cancelled_at:null})
+            .update({status:'registered'})
             .eq('id',existing.id);
 
           if(updateErr) errors.push(updateErr.message);
@@ -417,20 +417,13 @@ function cancellationKeeps48hRule(t){
 }
 
 async function cleanupReleasedSeat(trainingId){
-  const {data,error}=await supabaseClient
+  const {data}=await supabaseClient
     .from('registrations')
-    .select('id,cancelled_at,created_at')
+    .select('id,created_at')
     .eq('training_id',trainingId)
     .eq('status','cancelled')
-    .order('cancelled_at', {ascending:true, nullsFirst:false})
     .order('created_at', {ascending:true})
     .limit(1);
-
-  if(error){
-    console.warn('Freigegebenen Platz konnte nicht bereinigt werden:', error.message);
-    return;
-  }
-
   const old=data?.[0];
   if(old?.id) await supabaseClient.from('registrations').delete().eq('id', old.id);
 }
@@ -455,7 +448,7 @@ async function confirmCancelWithin48h(){
   const id=pendingCancelRegistrationId;
   pendingCancelRegistrationId=null;
   $('cancel48Modal').classList.remove('show');
-  const {error}=await supabaseClient.from('registrations').update({status:'cancelled',cancelled_at:new Date().toISOString()}).eq('id',id);
+  const {error}=await supabaseClient.from('registrations').update({status:'cancelled'}).eq('id',id);
   if(error)return alert(error.message);
   alert('Du bist abgemeldet. Der Platz wurde freigegeben.');
   await loadTrainings();
@@ -477,7 +470,6 @@ async function addSelectedParticipantToTraining(){
     if(String(error.message||'').includes('duplicate key')) return alert('Dieser Teilnehmer ist für dieses Training bereits angemeldet.');
     return alert('Teilnehmer konnte nicht hinzugefügt werden: '+error.message);
   }
-  await cleanupReleasedSeat(selectedTraining.id);
   await loadTrainings();
   await selectTraining(selectedTraining.id);
 }
