@@ -183,7 +183,9 @@ async function selectTraining(id){
 
   let query = supabaseClient
     .from('registrations')
-    .select('id,status,created_at,updated_at,cancelled_at,participants(id,first_name,last_name,email,phone)')
+    // cancelled_at wird bewusst nicht abgefragt, damit die Teilnehmerliste auch funktioniert,
+    // wenn der SQL-Patch für cancelled_at noch nicht in Supabase ausgeführt wurde.
+    .select('id,status,created_at,updated_at,participants(id,first_name,last_name,email,phone)')
     .eq('training_id',id)
     .order('created_at');
 
