@@ -761,7 +761,40 @@ async function renderSelectedMemberTrainings(){
   }
 
   const name=participantLabel(p) || 'Teilnehmer';
-  $('trainingDetail').innerHTML=`<p><b>${esc(name)}</b></p>${rows.length?`<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Von</th><th>Bis</th><th>Notizen</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.trainings?.date)}</td><td>${esc(String(r.trainings?.start_time||'').slice(0,5))}</td><td>${esc(String(r.trainings?.end_time||'').slice(0,5))}</td><td>${esc(r.trainings?.notes||'')}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Keine gebuchten Trainings vorhanden.</p>'}`;
+  $('trainingDetail').innerHTML=`<p><b>${esc(name)}</b></p>${rows.length?`<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Von</th><th>Bis</th><th>Notizen</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.trainings?.date)}</td><td>${esc(String(r.trainings?.start_time||'').slice(0,5))}</td><td>${esc(String(r.trainings?.end_time||'').slice(0,5))}</td><td>${esc(r.trainings?.notes||'')}</td><td>${renderMemberCancelCell(r)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Keine gebuchten Trainings vorhanden.</p>'}`;
+}
+
+function registrationTrainingObject(registrationRow){
+  const t=registrationRow?.trainings || {};
+  return {
+    id:t.id,
+    date:t.date,
+    start_time:t.start_time,
+    end_time:t.end_time,
+    notes:t.notes,
+    max_participants:t.max_participants || 0
+  };
+}
+
+function renderMemberCancelCell(registrationRow){
+  const t=registrationTrainingObject(registrationRow);
+  if(!registrationRow?.id || !t?.id) return '';
+  if(!publicChangeWindowOpen(t)){
+    return '<span class="muted">Nicht mehr möglich</span>';
+  }
+  return `<button class="danger participant-action" onclick="cancelMemberTraining('${registrationRow.id}','${t.id}')">Abmelden</button>`;
+}
+
+async function cancelMemberTraining(registrationId, trainingId){
+  const oldSelected=selectedTraining;
+  selectedTraining=trainings.find(t=>t.id===trainingId) || oldSelected;
+  if(!selectedTraining){
+    alert('Training nicht gefunden.');
+    selectedTraining=oldSelected;
+    return;
+  }
+  await cancelRegistration(registrationId);
+  await renderSelectedMemberTrainings();
 }
 
 async function getSelectedMemberRegistrations(showAlert=true){
@@ -769,7 +802,7 @@ async function getSelectedMemberRegistrations(showAlert=true){
   if(!participantId) { if(showAlert) alert('Bitte zuerst einen Teilnehmer auswählen.'); return null; }
   const {data,error}=await supabaseClient
     .from('registrations')
-    .select('status,created_at,trainings(id,date,start_time,end_time,notes),participants(first_name,last_name,email,phone)')
+    .select('id,status,created_at,trainings(id,date,start_time,end_time,notes),participants(first_name,last_name,email,phone)')
     .eq('participant_id',participantId)
     .eq('status','registered')
     .order('created_at');
