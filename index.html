@@ -123,11 +123,41 @@ function fmt(t){
 function download(name,content,type='text/plain;charset=utf-8'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
 function csvCell(v){return '"'+String(v??'').replaceAll('"','""')+'"'}
 function applyLocalSettings(){const s=JSON.parse(localStorage.getItem('tck_settings')||'{}'); if(s.title){$('appTitle').textContent=s.title;$('settingsTitle').value=s.title} if(s.comment){$('appComment').textContent=s.comment;$('settingsComment').value=s.comment} if(s.logo){$('logo').src=s.logo;$('logo').style.display='block'}}
-function setView(v){currentView=v; const isAdmin=currentProfile?.role==='admin', isStaff=['admin','trainer'].includes(currentProfile?.role); $('mainLayout').classList.toggle('hidden',v==='teacher'); $('teacherCard').classList.toggle('hidden',v!=='teacher'); $('adminCreateCard').classList.toggle('hidden',!(v==='admin'&&isAdmin)); $('adminPanel').classList.toggle('hidden',!(v==='admin'&&isAdmin)); $('participantsCard').classList.toggle('hidden',!(v==='admin'&&isStaff)); $('teacherViewBtn').classList.toggle('hidden',!isStaff); $('adminViewBtn').classList.toggle('hidden',!isAdmin); $('userViewBtn').classList.toggle('hidden',!currentProfile); if(v==='teacher') loadTeacher(); if(v==='admin'){loadParticipants();loadProfiles();renderSummary()} currentView=v; renderTrainings(); if(selectedTraining) selectTraining(selectedTraining.id); closeViewMenu(); }
+function setView(v){
+  currentView=v;
+  const isAdmin=currentProfile?.role==='admin', isStaff=['admin','trainer'].includes(currentProfile?.role);
+  $('mainLayout').classList.toggle('hidden',v==='teacher');
+  $('teacherCard').classList.toggle('hidden',v!=='teacher');
+  $('adminCreateCard').classList.toggle('hidden',!(v==='admin'&&isAdmin));
+  $('adminPanel').classList.toggle('hidden',!(v==='admin'&&isAdmin));
+  $('participantsCard').classList.toggle('hidden',!(v==='admin'&&isStaff));
+  $('teacherViewBtn').classList.toggle('hidden',!isStaff);
+  $('adminViewBtn').classList.toggle('hidden',!isAdmin);
+  $('userViewBtn').classList.toggle('hidden',!currentProfile);
+  if(v==='teacher') loadTeacher();
+  if(v==='admin'){loadParticipants();loadProfiles();renderSummary()}
+  currentView=v;
+  renderTrainings();
+  if(selectedTraining) selectTraining(selectedTraining.id);
+  else if(v==='user') renderNextTrainingsOverview();
+  closeViewMenu();
+}
 async function init(){applyLocalSettings(); $('teacherDate').value=isoToday(); const {data:{user}}=await supabaseClient.auth.getUser(); if(user){const {data:profile}=await supabaseClient.from('profiles').select('*').eq('id',user.id).maybeSingle(); if(profile){currentProfile=profile; $('userBadge').textContent=`Angemeldet: ${profile.full_name} (${profile.role})`; $('userBadge').classList.remove('hidden'); $('loginBtn').classList.add('hidden'); $('logoutBtn').classList.remove('hidden');}} await loadTrainings(); await loadMemberOptions(); setView(currentProfile?.role==='admin'?'admin':'user');}
 async function login(){const email=$('loginEmail').value.trim(), password=$('loginPassword').value; const {error}=await supabaseClient.auth.signInWithPassword({email,password}); if(error) return alert('Login fehlgeschlagen: '+error.message); location.reload()}
 async function logout(){await supabaseClient.auth.signOut(); location.reload()}
-async function loadTrainings(){const {data,error}=await supabaseClient.from('trainings_with_counts').select('*').order('date').order('start_time'); if(error){$('trainingList').innerHTML='<p class="muted">Trainings konnten nicht geladen werden: '+esc(error.message)+'</p>';return} trainings=data||[]; renderTrainings(); if(!selectedTraining&&trainings[0]) selectTraining(trainings[0].id)}
+async function loadTrainings(){
+  const {data,error}=await supabaseClient.from('trainings_with_counts').select('*').order('date').order('start_time');
+  if(error){$('trainingList').innerHTML='<p class="muted">Trainings konnten nicht geladen werden: '+esc(error.message)+'</p>';return}
+  trainings=data||[];
+  renderTrainings();
+  if(selectedTraining){
+    const stillExists=trainings.some(t=>t.id===selectedTraining.id);
+    if(stillExists) await selectTraining(selectedTraining.id);
+    else { selectedTraining=null; renderNextTrainingsOverview(); }
+  } else {
+    renderNextTrainingsOverview();
+  }
+}
 function monthLabel(key){
   const [y,m]=String(key).split('-');
   const names=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
@@ -172,6 +202,44 @@ function renderTrainings(){
     html+='</div>';
   });
   $('trainingList').innerHTML=html;
+}
+
+function upcomingTrainingsForNextDate(){
+  const now=new Date();
+  const upcoming=trainings
+    .filter(t=>{
+      const end=trainingEndsAt(t) || trainingStartsAt(t);
+      return end && end.getTime() >= now.getTime();
+    })
+    .sort((a,b)=>{
+      const ad=trainingStartsAt(a)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const bd=trainingStartsAt(b)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return ad-bd;
+    });
+  if(!upcoming.length) return [];
+  const nextDate=upcoming[0].date;
+  return upcoming.filter(t=>t.date===nextDate);
+}
+
+function renderNextTrainingsOverview(){
+  if(currentView!=='user' || selectedTraining) return;
+  const nextTrainings=upcomingTrainingsForNextDate();
+  $('detailTitle').textContent='Nächste Trainings';
+  if(!nextTrainings.length){
+    $('trainingDetail').innerHTML='<p class="muted">Keine kommenden Trainings vorhanden.</p>';
+    return;
+  }
+  const dateText=nextTrainings[0]?.date ? fmt(nextTrainings[0]).split(' ')[0] : '';
+  $('trainingDetail').innerHTML=`<p class="muted">${esc(dateText)} · ${nextTrainings.length} Trainingseinheit(en)</p>`+
+    nextTrainings.map(t=>`<div class="box" style="margin:10px 0">
+      <h3 style="margin-top:0">${esc(fmt(t))}</h3>
+      <p class="muted">Belegt: ${t.registration_count}/${t.max_participants}</p>
+      ${t.notes?`<p>${esc(t.notes)}</p>`:''}
+      <div class="actions">
+        <button class="secondary" onclick="selectTraining('${t.id}')">Teilnehmer anzeigen</button>
+        <button class="success" onclick="openReg('${t.id}')">Anmelden</button>
+      </div>
+    </div>`).join('');
 }
 async function selectTraining(id){
   selectedTraining=trainings.find(t=>t.id===id)||null;
