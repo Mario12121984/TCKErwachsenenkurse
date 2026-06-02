@@ -761,7 +761,7 @@ async function renderSelectedMemberTrainings(){
   }
 
   const name=participantLabel(p) || 'Teilnehmer';
-  $('trainingDetail').innerHTML=`<p><b>${esc(name)}</b></p>${rows.length?`<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Von</th><th>Bis</th><th>Notizen</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.trainings?.date)}</td><td>${esc(String(r.trainings?.start_time||'').slice(0,5))}</td><td>${esc(String(r.trainings?.end_time||'').slice(0,5))}</td><td>${esc(r.trainings?.notes||'')}</td><td>${renderMemberCancelCell(r)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Keine gebuchten Trainings vorhanden.</p>'}`;
+  $('trainingDetail').innerHTML=`<p><b>${esc(name)}</b></p>${rows.length?`<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Von</th><th>Bis</th><th>Notizen</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(r.trainings?.date)}</td><td>${esc(String(r.trainings?.start_time||'').slice(0,5))}</td><td>${esc(String(r.trainings?.end_time||'').slice(0,5))}</td><td>${esc(r.trainings?.notes||'')}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${renderMemberCancelCell(r)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Keine gebuchten Trainings vorhanden.</p>'}`;
 }
 
 function registrationTrainingObject(registrationRow){
@@ -779,6 +779,9 @@ function registrationTrainingObject(registrationRow){
 function renderMemberCancelCell(registrationRow){
   const t=registrationTrainingObject(registrationRow);
   if(!registrationRow?.id || !t?.id) return '';
+  if(registrationRow.status === 'cancelled'){
+    return '<span class="muted">Wartet auf Ersatz</span>';
+  }
   if(!publicChangeWindowOpen(t)){
     return '<span class="muted">Nicht mehr möglich</span>';
   }
@@ -804,7 +807,7 @@ async function getSelectedMemberRegistrations(showAlert=true){
     .from('registrations')
     .select('id,status,created_at,trainings(id,date,start_time,end_time,notes),participants(first_name,last_name,email,phone)')
     .eq('participant_id',participantId)
-    .eq('status','registered')
+    .in('status',['registered','cancelled'])
     .order('created_at');
   if(error){ if(showAlert) alert('Export nicht möglich: '+error.message); return null; }
   return data||[];
