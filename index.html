@@ -74,8 +74,8 @@
 <div id="successModal" class="modal"><div class="modal-box" style="max-width:380px;text-align:center"><h2>✅ Erfolgreich eingetragen</h2><p id="successText">Die Anmeldung wurde gespeichert.</p><button id="successOkBtn">OK</button></div></div>
 
 <div id="cancel48Modal" class="modal"><div class="modal-box" style="max-width:460px;text-align:center">
-  <h2>48h-Regel nicht eingehalten</h2>
-  <p>Die Abmeldung erfolgt weniger als 48 Stunden vor dem Training. Dein Name bleibt sichtbar und wird als <b>Platz freigegeben</b> markiert.</p>
+  <h2>48h-Regel / Platzfreigabe</h2>
+  <p>Die Abmeldung erfolgt weniger als 48 Stunden vor dem Training oder bis maximal 48 Stunden nach dem Training. Dein Name bleibt sichtbar und wird als <b>Platz freigegeben</b> markiert.</p>
   <p class="muted">Wenn sich ein neuer Teilnehmer anmeldet, wird zuerst der älteste freigegebene Platz aus der Liste entfernt.</p>
   <div class="actions">
     <button id="confirmCancel48Btn" class="danger">Platz freigeben</button>
@@ -209,7 +209,7 @@ async function selectTraining(id){
         <select id="adminAddParticipantSelect"><option value="">Bitte auswählen...</option>${participantCache.map(p=>`<option value="${esc(p.id)}">${esc(participantLabel(p))}</option>`).join('')}</select>
         <button class="success" onclick="addSelectedParticipantToTraining()">Teilnehmer hinzufügen</button>
       </div>
-      <div class="table-wrap"><table><thead><tr><th>Name</th><th>E-Mail</th><th>Natel</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(r.participants?.first_name)} ${esc(r.participants?.last_name)}</td><td>${esc(r.participants?.email)}</td><td>${esc(r.participants?.phone)}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td><button class="danger" onclick="adminDeleteRegistration('${r.id}')">${r.status === 'cancelled' ? 'Entfernen' : 'Abmelden'}</button></td></tr>`).join('')}</tbody></table></div>`;
+      <div class="table-wrap"><table><thead><tr><th>Name</th><th>E-Mail</th><th>Natel</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(r.participants?.first_name)} ${esc(r.participants?.last_name)}</td><td>${esc(r.participants?.email)}</td><td>${esc(r.participants?.phone)}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${r.status === 'cancelled' ? `<button class="danger" onclick="adminDeleteRegistration('${r.id}')">Entfernen</button>` : `<button class="danger" onclick="cancelRegistration('${r.id}')">Abmelden</button>`}</td></tr>`).join('')}</tbody></table></div>`;
   } else {
     const visibleRows=rows.filter(r=>r.status==='registered' || r.status==='cancelled');
     $('trainingDetail').innerHTML=`<p><b>${esc(fmt(selectedTraining))}</b></p><p class="muted">Belegt: ${selectedTraining.registration_count}/${selectedTraining.max_participants}</p>${selectedTraining.notes?`<p>${esc(selectedTraining.notes)}</p>`:''}<h3>Teilnehmer</h3>${visibleRows.length?`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Status</th><th></th></tr></thead><tbody>${visibleRows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(r.participants?.first_name || '')} ${esc(r.participants?.last_name || '')}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${r.status === 'registered' ? renderCancelCell(r.id) : ''}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Noch keine Teilnehmer eingetragen.</p><button class="success" onclick="openReg(\'${selectedTraining.id}\')">Anmelden</button>'}`;
@@ -218,7 +218,7 @@ async function selectTraining(id){
 function openReg(id){
   selectedTraining=trainings.find(t=>t.id===id);
   if(!['admin','trainer'].includes(currentProfile?.role) && !publicChangeWindowOpen(selectedTraining)){
-    return alert('Änderungen sind nicht mehr möglich. Bitte wende dich an den Admin.');
+    return alert('Änderungen sind nicht mehr möglich. Platz freigeben ist nur bis 48 Stunden nach dem Training möglich.');
   }
   selectedExistingParticipantId=null;
   $('regInfo').textContent=fmt(selectedTraining);
@@ -438,6 +438,7 @@ function trainingEndsAt(t){
 }
 
 function publicChangeWindowOpen(t){
+  // Platzfreigabe/Änderung ist bis 48 Stunden nach Trainingsende möglich.
   const end=trainingEndsAt(t);
   if(!end) return true;
   return Date.now() <= end.getTime() + 48*60*60*1000;
@@ -477,22 +478,21 @@ async function adminDeleteRegistration(id){
 async function cancelRegistration(id){
   if(!selectedTraining) return;
 
-  if(['admin','trainer'].includes(currentProfile?.role)){
-    return adminDeleteRegistration(id);
-  }
-
   if(!publicChangeWindowOpen(selectedTraining)){
-    return alert('Änderungen sind nicht mehr möglich. Bitte wende dich an den Admin.');
+    return alert('Änderungen sind nicht mehr möglich. Platz freigeben ist nur bis 48 Stunden nach dem Training möglich.');
   }
 
   const ok48=cancellationKeeps48hRule(selectedTraining);
+
+  // Mehr als 48h vor Trainingsbeginn: Anmeldung wird vollständig entfernt.
   if(ok48){
     const {error}=await supabaseClient.from('registrations').delete().eq('id',id);
     if(error)return alert(error.message);
-    alert('Du bist abgemeldet. Die Anmeldung wurde entfernt, da die 48h-Regel eingehalten wurde.');
+    alert('Die Anmeldung wurde entfernt, da die 48h-Regel eingehalten wurde.');
     await loadTrainings();
     if(selectedTraining) await selectTraining(selectedTraining.id);
   } else {
+    // Weniger als 48h vor Trainingsbeginn bis 48h nach Trainingsende: Platz wird freigegeben.
     pendingCancelRegistrationId=id;
     $('cancel48Modal').classList.add('show');
   }
@@ -503,7 +503,7 @@ async function confirmCancelWithin48h(){
   if(!publicChangeWindowOpen(selectedTraining)){
     pendingCancelRegistrationId=null;
     $('cancel48Modal').classList.remove('show');
-    return alert('Änderungen sind nicht mehr möglich. Bitte wende dich an den Admin.');
+    return alert('Änderungen sind nicht mehr möglich. Platz freigeben ist nur bis 48 Stunden nach dem Training möglich.');
   }
   const id=pendingCancelRegistrationId;
   pendingCancelRegistrationId=null;
