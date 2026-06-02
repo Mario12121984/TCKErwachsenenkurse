@@ -181,30 +181,18 @@ async function selectTraining(id){
   const isStaffView=currentView !== 'user' && ['admin','trainer'].includes(currentProfile?.role);
   $('detailTitle').textContent = isStaffView ? ('Training '+fmt(selectedTraining)) : 'Teilnehmer';
 
-  // Teilnehmerliste fehlertolerant laden:
-  // 1. Neue Datenbankstruktur mit status
-  // 2. Fallback für ältere Supabase-Struktur ohne status/updated_at/cancelled_at
+  // Teilnehmerliste mit 48h-Regel und Platzfreigabe laden.
+  // Wichtig: In Supabase müssen registrations.status und registrations.cancelled_at existieren.
   let {data,error}=await supabaseClient
     .from('registrations')
-    .select('id,status,created_at,participants(id,first_name,last_name,email,phone)')
+    .select('id,status,created_at,cancelled_at,participants(id,first_name,last_name,email,phone)')
     .eq('training_id',id)
     .order('created_at');
 
   if(error){
-    const fallback=await supabaseClient
-      .from('registrations')
-      .select('id,created_at,participants(id,first_name,last_name,email,phone)')
-      .eq('training_id',id)
-      .order('created_at');
-
-    data=(fallback.data||[]).map(r=>({...r,status:'registered'}));
-    error=fallback.error;
-  }
-
-  if(error){
     const hint = !isStaffView
-      ? '<p class="muted">Die Teilnehmerliste konnte nicht geladen werden. Prüfe in Supabase die SELECT-Berechtigung für registrations und participants.</p>'
-      : '<p class="muted">Teilnehmerliste konnte nicht geladen werden.</p>';
+      ? '<p class="muted">Die Teilnehmerliste konnte nicht geladen werden. Prüfe in Supabase die SELECT-Berechtigung für registrations und participants sowie die Spalten status und cancelled_at.</p>'
+      : '<p class="muted">Teilnehmerliste konnte nicht geladen werden. Prüfe die Supabase-Spalten status und cancelled_at.</p>';
     $('trainingDetail').innerHTML=`<p><b>${esc(fmt(selectedTraining))}</b></p>${hint}<p class="muted">${esc(error.message||'')}</p>`;
     return;
   }
@@ -465,9 +453,11 @@ function renderCancelCell(registrationId){
 async function cleanupReleasedSeat(trainingId){
   const {data,error}=await supabaseClient
     .from('registrations')
-    .select('id,created_at')
+    .select('id,cancelled_at,updated_at,created_at')
     .eq('training_id',trainingId)
     .eq('status','cancelled')
+    .order('cancelled_at', {ascending:true, nullsFirst:false})
+    .order('updated_at', {ascending:true})
     .order('created_at', {ascending:true})
     .limit(1);
   if(error) return console.warn('Freigegebener Platz konnte nicht bereinigt werden:', error.message);
