@@ -1267,21 +1267,21 @@ async function loadTeacher(){
       continue;
     }
 
-    const rows=(data||[]).filter(r=>r.status==='registered');
+    const rows=(data||[]).filter(r=>r.status==='registered' || r.status==='cancelled');
     html+=`<div class="training">
       <h3>${esc(fmt(t))}</h3>
-      <p class="muted">${rows.length}/${t.max_participants}</p>
+      <p class="muted">${rows.filter(r=>r.status==='registered').length}/${t.max_participants}</p>
       <div class="box" style="margin:12px 0;background:#eff6ff;border-color:#bfdbfe">
         <h3>Teilnehmer hinzufügen</h3>
         <button class="success" onclick="teacherAddParticipant('${t.id}')">Teilnehmer hinzufügen</button>
       </div>
       ${rows.length?`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Natel</th><th>Kursteilnahme</th><th>Änderung</th></tr></thead><tbody>${rows.map(r=>{
         const p=r.participants||{};
-        return `<tr>
+        return `<tr class="${r.status === 'cancelled' ? 'released-row' : ''}">
           <td>${esc(p.first_name||'')} ${esc(p.last_name||'')}</td>
           <td>${esc(p.phone||p.email||'')}</td>
-          <td>${attendanceButtons(r.id,r.attendance_status)}</td>
-          <td><button class="secondary participant-action" onclick="openTrainerChangeParticipant('${r.id}','${t.id}')">Neuen Teilnehmer eintragen</button></td>
+          <td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : attendanceButtons(r.id,r.attendance_status)}</td>
+          <td>${r.status === 'cancelled' ? `<button class="success participant-action" onclick="openTrainerChangeParticipant('${r.id}','${t.id}')">Platz neu besetzen</button>` : `<button class="secondary participant-action" onclick="openTrainerChangeParticipant('${r.id}','${t.id}')">Neuen Teilnehmer eintragen</button>`}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`:'<p class="muted">Keine Teilnehmer.</p>'}
     </div>`;
