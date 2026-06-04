@@ -59,10 +59,10 @@
 </div>
 
 <div id="regModal" class="modal"><div class="modal-box"><h2>Anmeldung</h2><p id="regInfo" class="muted"></p>
-<label>Vorname</label><div class="suggestion-wrap"><input id="firstName" placeholder="Max" autocomplete="off"><div id="participantSuggestionList" class="suggestion-list"></div></div>
-<label>Nachname</label><input id="lastName" placeholder="Muster" autocomplete="family-name">
-<label>E-Mail optional</label><input id="email" type="email" placeholder="optional" autocomplete="email">
-<label>Natelnummer</label><input id="phone" placeholder="+41 79 792 23 95" autocomplete="tel">
+<label>Vorname</label><div class="suggestion-wrap"><input id="firstName" placeholder="Max" autocomplete="off" required><div id="participantSuggestionList" class="suggestion-list"></div></div>
+<label>Nachname</label><input id="lastName" placeholder="Muster" autocomplete="family-name" required>
+<label>E-Mail</label><input id="email" type="email" placeholder="max.muster@bluewin.ch" autocomplete="email" required>
+<label>Natelnummer</label><input id="phone" placeholder="+41 79 792 23 95" autocomplete="tel" required>
 <div class="actions"><button id="confirmReg" class="success">Jetzt eintragen</button><button id="cancelReg" class="secondary">Abbrechen</button></div></div></div>
 
 <div id="tckModal" class="modal"><div class="modal-box" style="max-width:420px;text-align:center"><h2>TCK Mitglied?</h2><p>Bist du TCK Mitglied?</p><div class="actions"><button id="tckYesBtn" class="success">Ja</button><button id="tckNoBtn" class="secondary">Nein</button></div></div></div>
@@ -311,7 +311,7 @@ function openReg(id){
 function beginRegistrationFlow(){
   if(!selectedTraining)return;
   const first_name=$('firstName').value.trim(), last_name=$('lastName').value.trim(), email=$('email').value.trim(), phone=$('phone').value.trim();
-  if(!first_name||!last_name)return alert('Vorname und Nachname sind nötig.');
+  if(!first_name||!last_name||!email||!phone)return alert('Vorname, Nachname, E-Mail und Natelnummer sind nötig.');
 
   const existingParticipant =
     (selectedExistingParticipantId ? participantCache.find(p=>p.id===selectedExistingParticipantId) : null) ||
