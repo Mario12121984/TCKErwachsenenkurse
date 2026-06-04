@@ -183,7 +183,7 @@ function setView(v){
   else if(v==='user') renderNextTrainingsOverview();
   closeViewMenu();
 }
-async function init(){applyLocalSettings(); $('teacherDate').value=isoToday(); const {data:{user}}=await supabaseClient.auth.getUser(); if(user){const {data:profile}=await supabaseClient.from('profiles').select('*').eq('id',user.id).maybeSingle(); if(profile){currentProfile=profile; $('userBadge').textContent=`Angemeldet: ${profile.full_name} (${profile.role})`; $('userBadge').classList.remove('hidden'); $('loginBtn').classList.add('hidden'); $('logoutBtn').classList.remove('hidden');}} await loadTrainings(); await loadMemberOptions(); setView(currentProfile?.role==='admin'?'admin':'user');}
+async function init(){applyLocalSettings(); $('teacherDate').value=isoToday(); const {data:{user}}=await supabaseClient.auth.getUser(); if(user){const {data:profile}=await supabaseClient.from('profiles').select('*').eq('id',user.id).maybeSingle(); if(profile){currentProfile=profile; $('userBadge').textContent=`Angemeldet: ${profile.full_name} (${profile.role})`; $('userBadge').classList.remove('hidden'); $('loginBtn').classList.add('hidden'); $('logoutBtn').classList.remove('hidden');}} await loadTrainings(); await loadMemberOptions(); setView(currentProfile?.role==='admin'?'admin':(currentProfile?.role==='trainer'?'teacher':'user'));}
 function staffEmailFromUsername(username){
   const u=String(username||'').trim().toLowerCase();
   if(!u) return '';
@@ -647,6 +647,12 @@ function trainingEndsAt(t){
   return isNaN(d.getTime()) ? trainingStartsAt(t) : d;
 }
 
+function canStaffEditTraining(t){
+  if(currentProfile?.role === 'admin') return true;
+  if(currentProfile?.role === 'trainer') return publicChangeWindowOpen(t);
+  return false;
+}
+
 function publicChangeWindowOpen(t){
   // Platzfreigabe/Änderung ist bis 48 Stunden nach Trainingsende möglich.
   const end=trainingEndsAt(t);
@@ -754,6 +760,10 @@ async function cancelRegistration(id){
 
   const isStaffUser = ['admin','trainer'].includes(currentProfile?.role);
 
+  if(currentProfile?.role === 'trainer' && !publicChangeWindowOpen(selectedTraining)){
+    return alert('Dieses Training kann durch den Tennislehrer nur bis 48 Stunden nach der Einheit bearbeitet werden. Danach kann nur noch der Admin Änderungen vornehmen.');
+  }
+
   if(!isStaffUser && !publicChangeWindowOpen(selectedTraining)){
     return alert('Änderungen sind nicht mehr möglich. Platz freigeben ist nur bis 48 Stunden nach dem Training möglich.');
   }
@@ -802,6 +812,9 @@ function abortCancelWithin48h(){
 async function addSelectedParticipantToTraining(){
   if(currentProfile?.role!=='admin' && currentProfile?.role!=='trainer') return alert('Nur Admin oder Trainer.');
   if(!selectedTraining) return alert('Bitte zuerst ein Training auswählen.');
+  if(currentProfile?.role === 'trainer' && !publicChangeWindowOpen(selectedTraining)){
+    return alert('Dieses Training kann durch den Tennislehrer nur bis 48 Stunden nach der Einheit bearbeitet werden. Danach kann nur noch der Admin Änderungen vornehmen.');
+  }
   const participantId=$('adminAddParticipantSelect')?.value;
   if(!participantId) return alert('Bitte einen Teilnehmer auswählen.');
   const blockedByWeeklyRule = await participantHasWeeklyRegistrationBeforeFirstTraining(participantId, selectedTraining.id);
@@ -1169,6 +1182,15 @@ async function renderSummary(){
 
 async function setAttendance(registrationId,status){
   if(!['admin','trainer'].includes(currentProfile?.role)) return alert('Nur Trainer oder Admin.');
+
+  const trainingForEdit = currentView === 'teacher'
+    ? trainings.find(t=>t.date === $('teacherDate').value)
+    : selectedTraining;
+
+  if(currentProfile?.role === 'trainer' && trainingForEdit && !publicChangeWindowOpen(trainingForEdit)){
+    return alert('Dieses Training kann durch den Tennislehrer nur bis 48 Stunden nach der Einheit bearbeitet werden. Danach kann nur noch der Admin Änderungen vornehmen.');
+  }
+
   const {error}=await supabaseClient.from('registrations').update({attendance_status:status}).eq('id',registrationId);
   if(error) return alert('Kursteilnahme konnte nicht gespeichert werden: '+error.message+'\\n\\nBitte SQL für attendance_status ausführen.');
   if(currentView==='teacher') await loadTeacher();
@@ -1190,6 +1212,12 @@ function populateTrainerChangeSelect(){
 
 function openTrainerChangeParticipant(registrationId,trainingId){
   if(!['admin','trainer'].includes(currentProfile?.role)) return alert('Nur Trainer oder Admin.');
+
+  const t=trainings.find(x=>x.id===trainingId);
+  if(currentProfile?.role === 'trainer' && t && !publicChangeWindowOpen(t)){
+    return alert('Dieses Training kann durch den Tennislehrer nur bis 48 Stunden nach der Einheit bearbeitet werden. Danach kann nur noch der Admin Änderungen vornehmen.');
+  }
+
   $('trainerChangeRegistrationId').value=registrationId||'';
   $('trainerChangeTrainingId').value=trainingId||'';
   populateTrainerChangeSelect();
@@ -1200,6 +1228,10 @@ function openTrainerChangeParticipant(registrationId,trainingId){
 }
 
 async function teacherAddParticipant(trainingId){
+  const t=trainings.find(x=>x.id===trainingId);
+  if(currentProfile?.role === 'trainer' && t && !publicChangeWindowOpen(t)){
+    return alert('Dieses Training kann durch den Tennislehrer nur bis 48 Stunden nach der Einheit bearbeitet werden. Danach kann nur noch der Admin Änderungen vornehmen.');
+  }
   openTrainerChangeParticipant('', trainingId);
 }
 
@@ -1207,6 +1239,11 @@ async function saveTrainerChangeParticipant(){
   if(!['admin','trainer'].includes(currentProfile?.role)) return alert('Nur Trainer oder Admin.');
   const registrationId=$('trainerChangeRegistrationId').value;
   const trainingId=$('trainerChangeTrainingId').value;
+  const t=trainings.find(x=>x.id===trainingId);
+
+  if(currentProfile?.role === 'trainer' && t && !publicChangeWindowOpen(t)){
+    return alert('Dieses Training kann durch den Tennislehrer nur bis 48 Stunden nach der Einheit bearbeitet werden. Danach kann nur noch der Admin Änderungen vornehmen.');
+  }
   let participantId=$('trainerChangeParticipantSelect').value;
 
   if(!participantId){
@@ -1268,20 +1305,21 @@ async function loadTeacher(){
     }
 
     const rows=(data||[]).filter(r=>r.status==='registered' || r.status==='cancelled');
+    const canEditThisTraining = canStaffEditTraining(t);
     html+=`<div class="training">
       <h3>${esc(fmt(t))}</h3>
       <p class="muted">${rows.filter(r=>r.status==='registered').length}/${t.max_participants}</p>
       <div class="box" style="margin:12px 0;background:#eff6ff;border-color:#bfdbfe">
         <h3>Teilnehmer hinzufügen</h3>
-        <button class="success" onclick="teacherAddParticipant('${t.id}')">Teilnehmer hinzufügen</button>
+        ${canEditThisTraining ? `<button class="success" onclick="teacherAddParticipant('${t.id}')">Teilnehmer hinzufügen</button>` : `<p class="muted">Dieses Training kann durch den Tennislehrer nicht mehr bearbeitet werden. Änderungen sind nur noch durch den Admin möglich.</p>`}
       </div>
       ${rows.length?`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Natel</th><th>Kursteilnahme</th><th>Änderung</th></tr></thead><tbody>${rows.map(r=>{
         const p=r.participants||{};
         return `<tr class="${r.status === 'cancelled' ? 'released-row' : ''}">
           <td>${esc(p.first_name||'')} ${esc(p.last_name||'')}</td>
           <td>${esc(p.phone||p.email||'')}</td>
-          <td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : attendanceButtons(r.id,r.attendance_status)}</td>
-          <td>${r.status === 'cancelled' ? `<button class="success participant-action" onclick="openTrainerChangeParticipant('${r.id}','${t.id}')">Platz neu besetzen</button>` : `<button class="secondary participant-action" onclick="openTrainerChangeParticipant('${r.id}','${t.id}')">Neuen Teilnehmer eintragen</button>`}</td>
+          <td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : (canEditThisTraining ? attendanceButtons(r.id,r.attendance_status) : '<span class="muted">Nur Admin</span>')}</td>
+          <td>${canEditThisTraining ? (r.status === 'cancelled' ? `<button class="success participant-action" onclick="openTrainerChangeParticipant('${r.id}','${t.id}')">Platz neu besetzen</button>` : `<button class="secondary participant-action" onclick="openTrainerChangeParticipant('${r.id}','${t.id}')">Neuen Teilnehmer eintragen</button>`) : '<span class="muted">Nur Admin</span>'}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`:'<p class="muted">Keine Teilnehmer.</p>'}
     </div>`;
