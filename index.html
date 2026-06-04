@@ -9,7 +9,7 @@
     *{box-sizing:border-box} body{margin:0;padding:16px;font-family:Arial,sans-serif;background:#f3f4f6;color:#111827}.container{max-width:1200px;margin:auto}.topbar{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}.card{background:#fff;border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 10px 25px rgba(0,0,0,.08)}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}label{display:block;font-weight:bold;margin-top:10px;margin-bottom:5px}input,textarea,select,button{width:100%;padding:11px;border-radius:10px;border:1px solid #d1d5db;font-size:15px}button{border:0;background:#2563eb;color:white;font-weight:bold;cursor:pointer;margin-top:8px;min-height:44px}.secondary{background:#4b5563}.danger{background:#dc2626}.success{background:#059669}.warning{background:#f59e0b}.muted{color:#6b7280;font-size:14px}.hidden{display:none!important}.header{text-align:center;margin:20px 0 28px}.header img{max-width:220px;display:none;margin:0 auto 14px}.layout{display:grid;grid-template-columns:390px 1fr;gap:18px;align-items:start}.sticky{position:sticky;top:12px}.training{cursor:pointer;border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin:10px 0;background:#fafafa}.training.active{background:#eff6ff;border-color:#2563eb}.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;padding:12px}.num{font-size:28px;font-weight:bold}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;margin-top:10px}th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left;white-space:nowrap}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:99;padding:18px}.modal.show{display:flex}.modal-box{background:white;border-radius:18px;padding:20px;width:100%;max-width:560px;max-height:90vh;overflow:auto}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#e5e7eb;font-size:12px;font-weight:bold}.ok{background:#dcfce7;color:#166534}.bad{background:#fee2e2;color:#991b1b}.menu-wrap{position:relative;display:flex;justify-content:flex-end}.menu-button{width:auto!important;min-width:46px;min-height:40px;padding:8px 12px;margin-top:0;border-radius:10px;background:#4b5563}.menu-dropdown{display:none;position:absolute;right:0;top:46px;background:white;border:1px solid #e5e7eb;border-radius:14px;padding:8px;min-width:210px;box-shadow:0 12px 30px rgba(0,0,0,.18);z-index:80}.menu-dropdown.show{display:block}.menu-dropdown button{width:100%;margin:4px 0;text-align:left}.topbar{position:relative}.suggestion-wrap{position:relative}.suggestion-list{display:none;position:absolute;left:0;right:0;top:100%;z-index:120;background:#fff;border:1px solid #d1d5db;border-radius:0 0 12px 12px;box-shadow:0 10px 25px rgba(0,0,0,.16);max-height:240px;overflow:auto}.suggestion-list.show{display:block}.suggestion-item{padding:11px 12px;border-bottom:1px solid #e5e7eb;cursor:pointer;background:#fff}.suggestion-item:last-child{border-bottom:0}.suggestion-item:hover,.suggestion-item.active{background:#eff6ff}.suggestion-item strong{display:block}.suggestion-item span{display:block;color:#6b7280;font-size:13px;margin-top:2px}.month-header{width:100%;background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd;border-radius:12px;margin:12px 0 6px;text-align:left;display:flex;justify-content:space-between;align-items:center}.month-body{display:none}.month-body.open{display:block}.participant-action{width:auto;min-width:110px;padding:7px 10px;min-height:34px;margin-top:0}
 .released-row{background:#fff7ed;color:#9a3412}
 .released-badge{display:inline-block;background:#fed7aa;color:#9a3412;border-radius:999px;padding:4px 9px;font-weight:bold;font-size:12px}
-.attendance-present{background:#16a34a!important}.attendance-absent{background:#dc2626!important}.attendance-unknown{background:#6b7280!important}.field-error{border-color:#dc2626!important;background:#fef2f2!important}.validation-list{margin:12px 0 0;padding-left:20px;text-align:left}.validation-list li{margin:8px 0}.validation-box{border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:14px;padding:12px;margin-top:10px;text-align:left}
+.field-error{border-color:#dc2626!important;background:#fef2f2!important}.validation-list{margin:12px 0 0;padding-left:20px;text-align:left}.validation-list li{margin:8px 0}.validation-box{border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:14px;padding:12px;margin-top:10px;text-align:left}
     @media(max-width:850px){.layout,.grid,.grid3{grid-template-columns:1fr}.sticky{position:static}.topbar{justify-content:flex-end}.topbar button{width:100%}.menu-button{width:auto!important}.menu-dropdown{right:0;left:auto}}
   </style>
 </head>
@@ -92,29 +92,6 @@
   </div>
 </div></div>
 
-
-
-<div id="trainerChangeModal" class="modal"><div class="modal-box"><h2>Neuen Teilnehmer eintragen</h2>
-<p class="muted">Änderungen an einem bestehenden Eintrag sind nur möglich, wenn ein neuer Teilnehmer eingetragen oder ausgewählt wird.</p>
-<input id="trainerChangeRegistrationId" type="hidden">
-<input id="trainerChangeTrainingId" type="hidden">
-<label>Bestehenden Teilnehmer auswählen</label>
-<select id="trainerChangeParticipantSelect"><option value="">Bitte auswählen...</option></select>
-<hr>
-<h3>Oder neuen Teilnehmer erfassen</h3>
-<label>Vorname</label><input id="trainerChangeFirstName" placeholder="Max">
-<label>Nachname</label><input id="trainerChangeLastName" placeholder="Muster">
-<label>E-Mail</label><input id="trainerChangeEmail" type="email" placeholder="max.muster@bluewin.ch">
-<label>Natelnummer</label><input id="trainerChangePhone" placeholder="+41 79 795 40 23">
-<div class="grid">
-  <label style="font-weight:normal"><input id="trainerChangeTck" type="checkbox" style="width:auto;margin-right:8px">TCK Mitglied</label>
-  <label style="font-weight:normal"><input id="trainerChangeWhatsapp" type="checkbox" style="width:auto;margin-right:8px">WhatsApp erlaubt</label>
-</div>
-<div class="actions">
-  <button id="trainerChangeSaveBtn" class="success">Teilnehmer eintragen</button>
-  <button id="trainerChangeCancelBtn" class="secondary">Abbrechen</button>
-</div>
-</div></div>
 
 <div id="editParticipantModal" class="modal"><div class="modal-box"><h2>Teilnehmer bearbeiten</h2><input id="editParticipantId" type="hidden">
 <label>Vorname</label><input id="editParticipantFirstName">
@@ -1160,162 +1137,7 @@ async function renderSummary(){
 
   if(regsErr) console.warn('Zusammenfassung konnte nicht vollständig geladen werden:', regsErr.message);
 }
-
-async function setAttendance(registrationId,status){
-  if(!['admin','trainer'].includes(currentProfile?.role)) return alert('Nur Trainer oder Admin.');
-  const {error}=await supabaseClient
-    .from('registrations')
-    .update({attendance_status:status})
-    .eq('id',registrationId);
-
-  if(error){
-    return alert('Kursteilnahme konnte nicht gespeichert werden: '+error.message+'\\n\\nBitte führe die SQL-Erweiterung für attendance_status aus.');
-  }
-
-  await loadTeacher();
-}
-
-function populateTrainerChangeSelect(){
-  const sel=$('trainerChangeParticipantSelect');
-  if(!sel) return;
-  sel.innerHTML='<option value="">Bitte auswählen...</option>'+participantCache.map(p=>`<option value="${esc(p.id)}">${esc(participantLabel(p))}</option>`).join('');
-}
-
-function openTrainerChangeParticipant(registrationId,trainingId){
-  if(!['admin','trainer'].includes(currentProfile?.role)) return alert('Nur Trainer oder Admin.');
-
-  $('trainerChangeRegistrationId').value=registrationId||'';
-  $('trainerChangeTrainingId').value=trainingId||'';
-  populateTrainerChangeSelect();
-
-  ['trainerChangeFirstName','trainerChangeLastName','trainerChangeEmail','trainerChangePhone'].forEach(id=>$(id).value='');
-  $('trainerChangeTck').checked=false;
-  $('trainerChangeWhatsapp').checked=false;
-
-  $('trainerChangeModal').classList.add('show');
-}
-
-async function teacherAddParticipant(trainingId){
-  if(!['admin','trainer'].includes(currentProfile?.role)) return alert('Nur Trainer oder Admin.');
-  openTrainerChangeParticipant('', trainingId);
-}
-
-async function saveTrainerChangeParticipant(){
-  if(!['admin','trainer'].includes(currentProfile?.role)) return alert('Nur Trainer oder Admin.');
-
-  const registrationId=$('trainerChangeRegistrationId').value;
-  const trainingId=$('trainerChangeTrainingId').value;
-  let participantId=$('trainerChangeParticipantSelect').value;
-
-  if(!participantId){
-    const first_name=$('trainerChangeFirstName').value.trim();
-    const last_name=$('trainerChangeLastName').value.trim();
-    const email=$('trainerChangeEmail').value.trim();
-    const phoneInput=$('trainerChangePhone').value.trim();
-    const phone=normalizedPhoneForValidation(phoneInput);
-
-    if(!first_name||!last_name||!email||!phoneInput) return alert('Bitte Vorname, Nachname, E-Mail und Natelnummer eingeben.');
-    if(!isValidEmailSimple(email)) return alert('E-Mail muss ein @ enthalten.');
-    if(!isEuropeanPhoneNumber(phoneInput)) return alert('Natelnummer bitte mit europäischer Vorwahl eingeben, z.B. +41 79 792 23 95.');
-
-    const {data:p,error:pErr}=await supabaseClient
-      .from('participants')
-      .upsert({
-        first_name,
-        last_name,
-        email,
-        phone,
-        tck_member:$('trainerChangeTck').checked,
-        whatsapp_allowed:$('trainerChangeWhatsapp').checked
-      },{onConflict:'email'})
-      .select()
-      .single();
-
-    if(pErr) return alert('Teilnehmer konnte nicht erstellt werden: '+pErr.message);
-    participantId=p.id;
-  }
-
-  let result;
-  if(registrationId){
-    result=await supabaseClient
-      .from('registrations')
-      .update({participant_id:participantId,status:'registered'})
-      .eq('id',registrationId);
-  }else{
-    result=await supabaseClient
-      .from('registrations')
-      .insert({training_id:trainingId,participant_id:participantId});
-  }
-
-  if(result.error){
-    if(String(result.error.message||'').includes('duplicate key')) return alert('Dieser Teilnehmer ist bereits in diesem Training eingetragen.');
-    return alert('Änderung konnte nicht gespeichert werden: '+result.error.message);
-  }
-
-  $('trainerChangeModal').classList.remove('show');
-  await loadMemberOptions();
-  await loadTrainings();
-  await loadTeacher();
-}
-
-async function loadTeacher(){
-  const d=$('teacherDate').value;
-  const todays=trainings.filter(t=>t.date===d);
-  let html='';
-
-  await loadMemberOptions();
-
-  for(const t of todays){
-    const {data,error}=await supabaseClient
-      .from('registrations')
-      .select('id,status,created_at,attendance_status,participants(id,first_name,last_name,phone,email)')
-      .eq('training_id',t.id)
-      .in('status',['registered','cancelled'])
-      .order('created_at');
-
-    if(error){
-      html+=`<div class="training"><h3>${esc(fmt(t))}</h3><p class="muted">Teilnehmer konnten nicht geladen werden: ${esc(error.message)}</p></div>`;
-      continue;
-    }
-
-    const rows=(data||[]);
-    const activeRows=rows.filter(r=>r.status==='registered');
-
-    html+=`<div class="training">
-      <h3>${esc(fmt(t))}</h3>
-      <p class="muted">${activeRows.length}/${t.max_participants}</p>
-
-      <div class="box" style="margin:12px 0;background:#eff6ff;border-color:#bfdbfe">
-        <h3>Teilnehmer hinzufügen</h3>
-        <p class="muted">Der Tennislehrer kann hier einen neuen Teilnehmer eintragen oder einen bestehenden Teilnehmer auswählen.</p>
-        <button class="success" onclick="teacherAddParticipant('${t.id}')">Teilnehmer hinzufügen</button>
-      </div>
-
-      ${activeRows.length?`<div class="table-wrap"><table>
-        <thead><tr><th>Name</th><th>Natel</th><th>Kursteilnahme</th><th>Änderung</th></tr></thead>
-        <tbody>${activeRows.map(r=>{
-          const p=r.participants||{};
-          const attendance=r.attendance_status||'unknown';
-          const presentClass=attendance==='present'?'attendance-present':'attendance-unknown';
-          const absentClass=attendance==='absent'?'attendance-absent':'attendance-unknown';
-
-          return `<tr>
-            <td>${esc(p.first_name||'')} ${esc(p.last_name||'')}</td>
-            <td>${esc(p.phone||p.email||'')}</td>
-            <td>
-              <button class="${presentClass} participant-action" onclick="setAttendance('${r.id}','present')">Teilnahme bestätigt</button>
-              <button class="${absentClass} participant-action" onclick="setAttendance('${r.id}','absent')">Nicht da</button>
-            </td>
-            <td><button class="secondary participant-action" onclick="openTrainerChangeParticipant('${r.id}','${t.id}')">Neuen Teilnehmer eintragen</button></td>
-          </tr>`;
-        }).join('')}</tbody>
-      </table></div>`:'<p class="muted">Keine Teilnehmer.</p>'}
-    </div>`;
-  }
-
-  $('teacherList').innerHTML=html||'<p class="muted">Für dieses Datum sind keine Trainings vorhanden.</p>';
-}
-
+async function loadTeacher(){const d=$('teacherDate').value; const todays=trainings.filter(t=>t.date===d); let html=''; for(const t of todays){const {data}=await supabaseClient.from('registrations').select('participants(first_name,last_name,phone,email),status').eq('training_id',t.id).eq('status','registered'); html+=`<div class="training"><h3>${esc(fmt(t))}</h3><p class="muted">${(data||[]).length}/${t.max_participants}</p>${(data||[]).map(r=>`<div class="box">${esc(r.participants?.first_name)} ${esc(r.participants?.last_name)} · ${esc(r.participants?.phone||r.participants?.email||'')}</div>`).join('')||'<p class="muted">Keine Teilnehmer.</p>'}</div>`} $('teacherList').innerHTML=html||'<p class="muted">Für dieses Datum sind keine Trainings vorhanden.</p>'}
 
 async function deleteParticipantsList(){
   if(currentProfile?.role!=='admin') return alert('Nur Admin.');
@@ -1528,13 +1350,7 @@ document.addEventListener('click', function(e){
   if(!menu || !btn) return;
   if(!menu.contains(e.target) && e.target !== btn) menu.classList.remove('show');
 });
-$('menuBtn').onclick=(e)=>{e.stopPropagation();toggleViewMenu()}; $('firstName').addEventListener('input',handleFirstNameInput); $('firstName').addEventListener('focus',renderParticipantSuggestions); $('participantSuggestionList').addEventListener('click',handleSuggestionClick); document.addEventListener('click',function(e){const box=$('participantSuggestionList'); if(box && !box.contains(e.target) && e.target !== $('firstName')) box.classList.remove('show');}); $('loginBtn').onclick=()=>{closeViewMenu();$('loginCard').classList.toggle('hidden')}; $('doLogin').onclick=login; $('logoutBtn').onclick=()=>{closeViewMenu();logout()}; $('showMemberTrainingsBtn').onclick=toggleMemberExportBox; if($('showNextTrainingBtn')) $('showNextTrainingBtn').onclick=showNextTrainingOverview; $('exportMemberCsvBtn').onclick=exportSelectedMemberCsv; $('exportMemberIcsBtn').onclick=exportSelectedMemberIcs; $('memberExportSelect').onchange=renderSelectedMemberTrainings; $('userViewBtn').onclick=()=>setView('user'); $('teacherViewBtn').onclick=()=>setView('teacher'); $('adminViewBtn').onclick=()=>setView('admin'); $('todayBtn').onclick=()=>{
-  $('teacherDate').value=isoToday();
-  loadTeacher();
-}}; $('teacherDate').onchange=loadTeacher; $('saveTraining').onclick=createTraining; $('confirmReg').onclick=beginRegistrationFlow; $('cancelReg').onclick=()=>$('regModal').classList.remove('show'); $('reloadParticipants').onclick=loadParticipants; $('createStaffBtn').onclick=createStaffUser; $('exportParticipantsBtn').onclick=exportParticipants; $('deleteParticipantsListBtn').onclick=deleteParticipantsList; $('exportVisitsBtn').onclick=exportVisits; $('saveSettings').onclick=saveSettingsLocal; $('importParticipantsFile').onchange=e=>{if(e.target.files[0])importParticipants(e.target.files[0])}; $('tckYesBtn').onclick=()=>answerTck(true); $('tckNoBtn').onclick=()=>answerTck(false); $('whatsappYesBtn').onclick=()=>answerWhatsapp(true); $('whatsappNoBtn').onclick=()=>answerWhatsapp(false); $('multiConfirmBtn').onclick=()=>completeRegistration(true); $('multiSkipBtn').onclick=()=>completeRegistration(false); $('successOkBtn').onclick=()=>$('successModal').classList.remove('show'); if($('validationOkBtn')) $('validationOkBtn').onclick=()=>$('validationModal').classList.remove('show'); ['firstName','lastName','email','phone'].forEach(id=>{ if($(id)) $(id).addEventListener('input',()=>$(id).classList.remove('field-error')); }); $('confirmCancel48Btn').onclick=confirmCancelWithin48h; $('abortCancel48Btn').onclick=abortCancelWithin48h; $('saveEditParticipantBtn').onclick=saveEditParticipant; $('cancelEditParticipantBtn').onclick=()=>$('editParticipantModal').classList.remove('show'); $('saveEditTrainingBtn').onclick=saveEditTraining; $('cancelEditTrainingBtn').onclick=()=>$('editTrainingModal').classList.remove('show');
-$('trainerChangeSaveBtn')?.addEventListener('click', saveTrainerChangeParticipant);
-$('trainerChangeCancelBtn')?.addEventListener('click', ()=>$('trainerChangeModal').classList.remove('show'));
-
+$('menuBtn').onclick=(e)=>{e.stopPropagation();toggleViewMenu()}; $('firstName').addEventListener('input',handleFirstNameInput); $('firstName').addEventListener('focus',renderParticipantSuggestions); $('participantSuggestionList').addEventListener('click',handleSuggestionClick); document.addEventListener('click',function(e){const box=$('participantSuggestionList'); if(box && !box.contains(e.target) && e.target !== $('firstName')) box.classList.remove('show');}); $('loginBtn').onclick=()=>{closeViewMenu();$('loginCard').classList.toggle('hidden')}; $('doLogin').onclick=login; $('logoutBtn').onclick=()=>{closeViewMenu();logout()}; $('showMemberTrainingsBtn').onclick=toggleMemberExportBox; if($('showNextTrainingBtn')) $('showNextTrainingBtn').onclick=showNextTrainingOverview; $('exportMemberCsvBtn').onclick=exportSelectedMemberCsv; $('exportMemberIcsBtn').onclick=exportSelectedMemberIcs; $('memberExportSelect').onchange=renderSelectedMemberTrainings; $('userViewBtn').onclick=()=>setView('user'); $('teacherViewBtn').onclick=()=>setView('teacher'); $('adminViewBtn').onclick=()=>setView('admin'); $('todayBtn').onclick=()=>{$('teacherDate').value=isoToday();loadTeacher()}; $('teacherDate').onchange=loadTeacher; $('saveTraining').onclick=createTraining; $('confirmReg').onclick=beginRegistrationFlow; $('cancelReg').onclick=()=>$('regModal').classList.remove('show'); $('reloadParticipants').onclick=loadParticipants; $('createStaffBtn').onclick=createStaffUser; $('exportParticipantsBtn').onclick=exportParticipants; $('deleteParticipantsListBtn').onclick=deleteParticipantsList; $('exportVisitsBtn').onclick=exportVisits; $('saveSettings').onclick=saveSettingsLocal; $('importParticipantsFile').onchange=e=>{if(e.target.files[0])importParticipants(e.target.files[0])}; $('tckYesBtn').onclick=()=>answerTck(true); $('tckNoBtn').onclick=()=>answerTck(false); $('whatsappYesBtn').onclick=()=>answerWhatsapp(true); $('whatsappNoBtn').onclick=()=>answerWhatsapp(false); $('multiConfirmBtn').onclick=()=>completeRegistration(true); $('multiSkipBtn').onclick=()=>completeRegistration(false); $('successOkBtn').onclick=()=>$('successModal').classList.remove('show'); if($('validationOkBtn')) $('validationOkBtn').onclick=()=>$('validationModal').classList.remove('show'); ['firstName','lastName','email','phone'].forEach(id=>{ if($(id)) $(id).addEventListener('input',()=>$(id).classList.remove('field-error')); }); $('confirmCancel48Btn').onclick=confirmCancelWithin48h; $('abortCancel48Btn').onclick=abortCancelWithin48h; $('saveEditParticipantBtn').onclick=saveEditParticipant; $('cancelEditParticipantBtn').onclick=()=>$('editParticipantModal').classList.remove('show'); $('saveEditTrainingBtn').onclick=saveEditTraining; $('cancelEditTrainingBtn').onclick=()=>$('editTrainingModal').classList.remove('show');
 init();
 </script>
 </body>
