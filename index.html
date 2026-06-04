@@ -1024,8 +1024,40 @@ function toggleMemberExportBox(){
 async function loadProfiles(){
   const {data,error}=await supabaseClient.from('profiles').select('*').order('created_at');
   if(error){$('profilesList').innerHTML='<p class="muted">'+esc(error.message)+'</p>';return}
-  $('profilesList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Benutzername</th><th>Rolle</th><th>User-ID</th><th>Aktion</th></tr></thead><tbody>${(data||[]).map(p=>`<tr><td>${esc(p.full_name)}</td><td>${esc(p.username||'')}</td><td>${esc(p.role)}</td><td>${esc(p.id)}</td><td><button class='danger participant-action' onclick="deleteStaffUser('${p.id}')">Löschen</button></td></tr>`).join('')}</tbody></table></div>`
+  $('profilesList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Benutzername</th><th>Rolle</th><th>User-ID</th><th>Aktion</th></tr></thead><tbody>${(data||[]).map(p=>{
+    const isMe = currentProfile && p.id === currentProfile.id;
+    const action = isMe
+      ? '<span class="muted">Eigener Benutzer</span>'
+      : `<button class="danger participant-action" onclick="deleteStaffUser('${esc(p.id)}','${esc(p.full_name||p.username||'Benutzer')}')">Löschen</button>`;
+    return `<tr><td>${esc(p.full_name)}</td><td>${esc(p.username||'')}</td><td>${esc(p.role)}</td><td>${esc(p.id)}</td><td>${action}</td></tr>`;
+  }).join('')}</tbody></table></div>`
 }
+async function deleteStaffUser(userId, name){
+  if(currentProfile?.role!=='admin') return alert('Nur Admin.');
+  if(!userId) return alert('Benutzer-ID fehlt.');
+  if(currentProfile?.id === userId) return alert('Du kannst deinen eigenen Benutzer nicht löschen.');
+  if(!confirm('Benutzer wirklich löschen?
+
+'+(name||userId))) return;
+
+  const {data:{session}}=await supabaseClient.auth.getSession();
+  if(!session?.access_token) return alert('Bitte neu als Admin anmelden.');
+
+  const response=await fetch(`${SUPABASE_URL}/functions/v1/delete-staff-user`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+    body:JSON.stringify({user_id:userId})
+  });
+
+  const result=await response.json().catch(()=>({error:'Unbekannte Antwort der Edge Function'}));
+  if(!response.ok || result.success===false){
+    return alert('Benutzer konnte nicht gelöscht werden: '+(result.error||response.statusText));
+  }
+
+  await loadProfiles();
+  alert('Benutzer wurde gelöscht.');
+}
+
 async function createStaffUser(){
   if(currentProfile?.role!=='admin') return alert('Nur Admin.');
   const full_name=$('staffFullName').value.trim();
