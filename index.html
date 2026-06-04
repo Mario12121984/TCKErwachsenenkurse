@@ -94,11 +94,11 @@
 
 
 
-<div id="trainerChangeModal" class="modal"><div class="modal-box"><h2>Teilnehmer eintragen / ändern</h2>
-<p class="muted">Änderungen in der TL Tagesansicht sind nur möglich, wenn ein neuer Teilnehmer eingetragen wird.</p>
+<div id="trainerChangeModal" class="modal"><div class="modal-box"><h2>Neuen Teilnehmer eintragen</h2>
+<p class="muted">Änderungen an einem bestehenden Eintrag sind nur möglich, wenn ein neuer Teilnehmer eingetragen oder ausgewählt wird.</p>
 <input id="trainerChangeRegistrationId" type="hidden">
 <input id="trainerChangeTrainingId" type="hidden">
-<label>Teilnehmer auswählen</label>
+<label>Bestehenden Teilnehmer auswählen</label>
 <select id="trainerChangeParticipantSelect"><option value="">Bitte auswählen...</option></select>
 <hr>
 <h3>Oder neuen Teilnehmer erfassen</h3>
@@ -1167,9 +1167,11 @@ async function setAttendance(registrationId,status){
     .from('registrations')
     .update({attendance_status:status})
     .eq('id',registrationId);
-  if(error) return alert('Teilnahme konnte nicht gespeichert werden: '+error.message+'
 
-Falls die Spalte attendance_status fehlt, brauchst du eine SQL-Erweiterung.');
+  if(error){
+    return alert('Kursteilnahme konnte nicht gespeichert werden: '+error.message+'\\n\\nBitte führe die SQL-Erweiterung für attendance_status aus.');
+  }
+
   await loadTeacher();
 }
 
@@ -1181,30 +1183,26 @@ function populateTrainerChangeSelect(){
 
 function openTrainerChangeParticipant(registrationId,trainingId){
   if(!['admin','trainer'].includes(currentProfile?.role)) return alert('Nur Trainer oder Admin.');
+
   $('trainerChangeRegistrationId').value=registrationId||'';
   $('trainerChangeTrainingId').value=trainingId||'';
   populateTrainerChangeSelect();
+
   ['trainerChangeFirstName','trainerChangeLastName','trainerChangeEmail','trainerChangePhone'].forEach(id=>$(id).value='');
   $('trainerChangeTck').checked=false;
   $('trainerChangeWhatsapp').checked=false;
+
   $('trainerChangeModal').classList.add('show');
 }
 
 async function teacherAddParticipant(trainingId){
   if(!['admin','trainer'].includes(currentProfile?.role)) return alert('Nur Trainer oder Admin.');
-  const participantId=$(`teacherAddSelect_${trainingId}`)?.value;
-  if(!participantId) return alert('Bitte Teilnehmer auswählen.');
-  const {error}=await supabaseClient.from('registrations').insert({training_id:trainingId,participant_id:participantId});
-  if(error){
-    if(String(error.message||'').includes('duplicate key')) return alert('Dieser Teilnehmer ist bereits eingetragen.');
-    return alert('Teilnehmer konnte nicht hinzugefügt werden: '+error.message);
-  }
-  await loadTrainings();
-  await loadTeacher();
+  openTrainerChangeParticipant('', trainingId);
 }
 
 async function saveTrainerChangeParticipant(){
   if(!['admin','trainer'].includes(currentProfile?.role)) return alert('Nur Trainer oder Admin.');
+
   const registrationId=$('trainerChangeRegistrationId').value;
   const trainingId=$('trainerChangeTrainingId').value;
   let participantId=$('trainerChangeParticipantSelect').value;
@@ -1222,23 +1220,38 @@ async function saveTrainerChangeParticipant(){
 
     const {data:p,error:pErr}=await supabaseClient
       .from('participants')
-      .upsert({first_name,last_name,email,phone,tck_member:$('trainerChangeTck').checked,whatsapp_allowed:$('trainerChangeWhatsapp').checked},{onConflict:'email'})
+      .upsert({
+        first_name,
+        last_name,
+        email,
+        phone,
+        tck_member:$('trainerChangeTck').checked,
+        whatsapp_allowed:$('trainerChangeWhatsapp').checked
+      },{onConflict:'email'})
       .select()
       .single();
+
     if(pErr) return alert('Teilnehmer konnte nicht erstellt werden: '+pErr.message);
     participantId=p.id;
   }
 
-  let error=null;
+  let result;
   if(registrationId){
-    const res=await supabaseClient.from('registrations').update({participant_id:participantId,status:'registered'}).eq('id',registrationId);
-    error=res.error;
+    result=await supabaseClient
+      .from('registrations')
+      .update({participant_id:participantId,status:'registered'})
+      .eq('id',registrationId);
   }else{
-    const res=await supabaseClient.from('registrations').insert({training_id:trainingId,participant_id:participantId});
-    error=res.error;
+    result=await supabaseClient
+      .from('registrations')
+      .insert({training_id:trainingId,participant_id:participantId});
   }
 
-  if(error) return alert('Änderung konnte nicht gespeichert werden: '+error.message);
+  if(result.error){
+    if(String(result.error.message||'').includes('duplicate key')) return alert('Dieser Teilnehmer ist bereits in diesem Training eingetragen.');
+    return alert('Änderung konnte nicht gespeichert werden: '+result.error.message);
+  }
+
   $('trainerChangeModal').classList.remove('show');
   await loadMemberOptions();
   await loadTrainings();
@@ -1249,6 +1262,7 @@ async function loadTeacher(){
   const d=$('teacherDate').value;
   const todays=trainings.filter(t=>t.date===d);
   let html='';
+
   await loadMemberOptions();
 
   for(const t of todays){
@@ -1266,35 +1280,42 @@ async function loadTeacher(){
 
     const rows=(data||[]);
     const activeRows=rows.filter(r=>r.status==='registered');
+
     html+=`<div class="training">
       <h3>${esc(fmt(t))}</h3>
       <p class="muted">${activeRows.length}/${t.max_participants}</p>
+
       <div class="box" style="margin:12px 0;background:#eff6ff;border-color:#bfdbfe">
         <h3>Teilnehmer hinzufügen</h3>
-        <label>Teilnehmer auswählen</label>
-        <select id="teacherAddSelect_${t.id}"><option value="">Bitte auswählen...</option>${participantCache.map(p=>`<option value="${esc(p.id)}">${esc(participantLabel(p))}</option>`).join('')}</select>
+        <p class="muted">Der Tennislehrer kann hier einen neuen Teilnehmer eintragen oder einen bestehenden Teilnehmer auswählen.</p>
         <button class="success" onclick="teacherAddParticipant('${t.id}')">Teilnehmer hinzufügen</button>
       </div>
-      ${activeRows.length?`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Natel</th><th>Kursteilnahme</th><th>Änderung</th></tr></thead><tbody>${activeRows.map(r=>{
-        const p=r.participants||{};
-        const attendance=r.attendance_status||'unknown';
-        const presentClass=attendance==='present'?'attendance-present':'attendance-unknown';
-        const absentClass=attendance==='absent'?'attendance-absent':'attendance-unknown';
-        return `<tr>
-          <td>${esc(p.first_name||'')} ${esc(p.last_name||'')}</td>
-          <td>${esc(p.phone||p.email||'')}</td>
-          <td>
-            <button class="${presentClass} participant-action" onclick="setAttendance('${r.id}','present')">Teilnahme bestätigt</button>
-            <button class="${absentClass} participant-action" onclick="setAttendance('${r.id}','absent')">Nicht da</button>
-          </td>
-          <td><button class="secondary participant-action" onclick="openTrainerChangeParticipant('${r.id}','${t.id}')">Neuen Teilnehmer eintragen</button></td>
-        </tr>`;
-      }).join('')}</tbody></table></div>`:'<p class="muted">Keine Teilnehmer.</p>'}
+
+      ${activeRows.length?`<div class="table-wrap"><table>
+        <thead><tr><th>Name</th><th>Natel</th><th>Kursteilnahme</th><th>Änderung</th></tr></thead>
+        <tbody>${activeRows.map(r=>{
+          const p=r.participants||{};
+          const attendance=r.attendance_status||'unknown';
+          const presentClass=attendance==='present'?'attendance-present':'attendance-unknown';
+          const absentClass=attendance==='absent'?'attendance-absent':'attendance-unknown';
+
+          return `<tr>
+            <td>${esc(p.first_name||'')} ${esc(p.last_name||'')}</td>
+            <td>${esc(p.phone||p.email||'')}</td>
+            <td>
+              <button class="${presentClass} participant-action" onclick="setAttendance('${r.id}','present')">Teilnahme bestätigt</button>
+              <button class="${absentClass} participant-action" onclick="setAttendance('${r.id}','absent')">Nicht da</button>
+            </td>
+            <td><button class="secondary participant-action" onclick="openTrainerChangeParticipant('${r.id}','${t.id}')">Neuen Teilnehmer eintragen</button></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`:'<p class="muted">Keine Teilnehmer.</p>'}
     </div>`;
   }
 
   $('teacherList').innerHTML=html||'<p class="muted">Für dieses Datum sind keine Trainings vorhanden.</p>';
 }
+
 
 async function deleteParticipantsList(){
   if(currentProfile?.role!=='admin') return alert('Nur Admin.');
