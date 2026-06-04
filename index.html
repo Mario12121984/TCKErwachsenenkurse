@@ -63,7 +63,7 @@
 <label>Vorname</label><div class="suggestion-wrap"><input id="firstName" placeholder="Max" autocomplete="off" required><div id="participantSuggestionList" class="suggestion-list"></div></div>
 <label>Nachname</label><input id="lastName" placeholder="Muster" autocomplete="family-name" required>
 <label>E-Mail</label><input id="email" type="email" placeholder="max.muster@bluewin.ch" autocomplete="email" required title="Bitte eine gültige E-Mail-Adresse mit @ eingeben.">
-<label>Natelnummer</label><input id="phone" placeholder="+41 79 792 23 95" autocomplete="tel" required title="Bitte mit europäischer Landesvorwahl eingeben, z.B. +41 79 792 23 95.">
+<label>Natelnummer</label><input id="phone" placeholder="+41 79 795 40 23" autocomplete="tel" required title="Bitte mit europäischer Landesvorwahl eingeben, z.B. +41 79 792 23 95.">
 <div class="actions"><button id="confirmReg" class="success">Jetzt eintragen</button><button id="cancelReg" class="secondary">Abbrechen</button></div></div></div>
 
 <div id="tckModal" class="modal"><div class="modal-box" style="max-width:420px;text-align:center"><h2>TCK Mitglied?</h2><p>Bist du TCK Mitglied?</p><div class="actions"><button id="tckYesBtn" class="success">Ja</button><button id="tckNoBtn" class="secondary">Nein</button></div></div></div>
@@ -347,7 +347,11 @@ function isValidEmailSimple(email){
 }
 
 function normalizedPhoneForValidation(phone){
-  return String(phone||'').trim().replace(/[\s().\-\/]/g,'');
+  let value=String(phone||'').trim();
+  // 00 41 ... wird wie +41 ... behandelt.
+  if(value.startsWith('00')) value='+'+value.slice(2);
+  // Leerzeichen, Klammern, Punkte, Bindestriche und Schrägstriche entfernen.
+  return value.replace(/[\s().\-\/]/g,'');
 }
 
 function isEuropeanPhoneNumber(phone){
@@ -360,13 +364,15 @@ function isEuropeanPhoneNumber(phone){
     '+420','+421','+423',
     '+30','+31','+32','+33','+34','+36','+39','+40','+41','+43','+44','+45','+46','+47','+48','+49'
   ];
-  return /^\+[0-9]{7,15}$/.test(normalized) && europeanPrefixes.some(prefix=>normalized.startsWith(prefix));
+  return /^\+[0-9]{6,15}$/.test(normalized) && europeanPrefixes.some(prefix=>normalized.startsWith(prefix));
 }
 
 function beginRegistrationFlow(){
   if(!selectedTraining)return;
   clearInputErrors();
-  const first_name=$('firstName').value.trim(), last_name=$('lastName').value.trim(), email=$('email').value.trim(), phone=$('phone').value.trim();
+  const first_name=$('firstName').value.trim(), last_name=$('lastName').value.trim(), email=$('email').value.trim();
+  const phoneInput=$('phone').value.trim();
+  const phone=normalizedPhoneForValidation(phoneInput);
   const validationMessages=[];
   let focusId='';
 
@@ -379,10 +385,10 @@ function beginRegistrationFlow(){
     validationMessages.push('Deine E-Mail-Adresse ist nicht korrekt. Sie muss mindestens ein @ enthalten, zum Beispiel max.muster@bluewin.ch.');
     markInputError('email'); focusId ||= 'email';
   }
-  if(!phone){
+  if(!phoneInput){
     validationMessages.push('Bitte gib deine Natelnummer ein.');
     markInputError('phone'); focusId ||= 'phone';
-  } else if(!isEuropeanPhoneNumber(phone)){
+  } else if(!isEuropeanPhoneNumber(phoneInput)){
     validationMessages.push('Deine Natelnummer ist nicht korrekt. Bitte gib sie mit europäischer Landesvorwahl ein, zum Beispiel +41 79 792 23 95 oder +49 171 1234567.');
     markInputError('phone'); focusId ||= 'phone';
   }
@@ -390,6 +396,9 @@ function beginRegistrationFlow(){
   if(validationMessages.length){
     return showValidationPopup(validationMessages, focusId);
   }
+
+  // Für Supabase wird die Natelnummer ohne Leerzeichen gespeichert, z.B. +41797954023.
+  $('phone').value=phone;
 
   const existingParticipant =
     (selectedExistingParticipantId ? participantCache.find(p=>p.id===selectedExistingParticipantId) : null) ||
