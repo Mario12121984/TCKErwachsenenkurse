@@ -1024,7 +1024,7 @@ function toggleMemberExportBox(){
 async function loadProfiles(){
   const {data,error}=await supabaseClient.from('profiles').select('*').order('created_at');
   if(error){$('profilesList').innerHTML='<p class="muted">'+esc(error.message)+'</p>';return}
-  $('profilesList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Benutzername</th><th>Rolle</th><th>User-ID</th></tr></thead><tbody>${(data||[]).map(p=>`<tr><td>${esc(p.full_name)}</td><td>${esc(p.username||'')}</td><td>${esc(p.role)}</td><td>${esc(p.id)}</td></tr>`).join('')}</tbody></table></div>`
+  $('profilesList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Benutzername</th><th>Rolle</th><th>User-ID</th><th>Aktion</th></tr></thead><tbody>${(data||[]).map(p=>`<tr><td>${esc(p.full_name)}</td><td>${esc(p.username||'')}</td><td>${esc(p.role)}</td><td>${esc(p.id)}</td><td><button class='danger participant-action' onclick="deleteStaffUser('${p.id}')">Löschen</button></td></tr>`).join('')}</tbody></table></div>`
 }
 async function createStaffUser(){
   if(currentProfile?.role!=='admin') return alert('Nur Admin.');
