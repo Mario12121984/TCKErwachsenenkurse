@@ -9,6 +9,7 @@
     *{box-sizing:border-box} body{margin:0;padding:16px;font-family:Arial,sans-serif;background:#f3f4f6;color:#111827}.container{max-width:1200px;margin:auto}.topbar{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}.card{background:#fff;border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 10px 25px rgba(0,0,0,.08)}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}label{display:block;font-weight:bold;margin-top:10px;margin-bottom:5px}input,textarea,select,button{width:100%;padding:11px;border-radius:10px;border:1px solid #d1d5db;font-size:15px}button{border:0;background:#2563eb;color:white;font-weight:bold;cursor:pointer;margin-top:8px;min-height:44px}.secondary{background:#4b5563}.danger{background:#dc2626}.success{background:#059669}.warning{background:#f59e0b}.muted{color:#6b7280;font-size:14px}.hidden{display:none!important}.header{text-align:center;margin:20px 0 28px}.header img{max-width:220px;display:none;margin:0 auto 14px}.layout{display:grid;grid-template-columns:390px 1fr;gap:18px;align-items:start}.sticky{position:sticky;top:12px}.training{cursor:pointer;border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin:10px 0;background:#fafafa}.training.active{background:#eff6ff;border-color:#2563eb}.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;padding:12px}.num{font-size:28px;font-weight:bold}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;margin-top:10px}th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left;white-space:nowrap}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:99;padding:18px}.modal.show{display:flex}.modal-box{background:white;border-radius:18px;padding:20px;width:100%;max-width:560px;max-height:90vh;overflow:auto}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#e5e7eb;font-size:12px;font-weight:bold}.ok{background:#dcfce7;color:#166534}.bad{background:#fee2e2;color:#991b1b}.menu-wrap{position:relative;display:flex;justify-content:flex-end}.menu-button{width:auto!important;min-width:46px;min-height:40px;padding:8px 12px;margin-top:0;border-radius:10px;background:#4b5563}.menu-dropdown{display:none;position:absolute;right:0;top:46px;background:white;border:1px solid #e5e7eb;border-radius:14px;padding:8px;min-width:210px;box-shadow:0 12px 30px rgba(0,0,0,.18);z-index:80}.menu-dropdown.show{display:block}.menu-dropdown button{width:100%;margin:4px 0;text-align:left}.topbar{position:relative}.suggestion-wrap{position:relative}.suggestion-list{display:none;position:absolute;left:0;right:0;top:100%;z-index:120;background:#fff;border:1px solid #d1d5db;border-radius:0 0 12px 12px;box-shadow:0 10px 25px rgba(0,0,0,.16);max-height:240px;overflow:auto}.suggestion-list.show{display:block}.suggestion-item{padding:11px 12px;border-bottom:1px solid #e5e7eb;cursor:pointer;background:#fff}.suggestion-item:last-child{border-bottom:0}.suggestion-item:hover,.suggestion-item.active{background:#eff6ff}.suggestion-item strong{display:block}.suggestion-item span{display:block;color:#6b7280;font-size:13px;margin-top:2px}.month-header{width:100%;background:#dbeafe;color:#1e3a8a;border:1px solid #93c5fd;border-radius:12px;margin:12px 0 6px;text-align:left;display:flex;justify-content:space-between;align-items:center}.month-body{display:none}.month-body.open{display:block}.participant-action{width:auto;min-width:110px;padding:7px 10px;min-height:34px;margin-top:0}
 .released-row{background:#fff7ed;color:#9a3412}
 .released-badge{display:inline-block;background:#fed7aa;color:#9a3412;border-radius:999px;padding:4px 9px;font-weight:bold;font-size:12px}
+.field-error{border-color:#dc2626!important;background:#fef2f2!important}.validation-list{margin:12px 0 0;padding-left:20px;text-align:left}.validation-list li{margin:8px 0}.validation-box{border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:14px;padding:12px;margin-top:10px;text-align:left}
     @media(max-width:850px){.layout,.grid,.grid3{grid-template-columns:1fr}.sticky{position:static}.topbar{justify-content:flex-end}.topbar button{width:100%}.menu-button{width:auto!important}.menu-dropdown{right:0;left:auto}}
   </style>
 </head>
@@ -72,6 +73,14 @@
 <div id="multiModal" class="modal"><div class="modal-box"><h2>Mehrere Trainings anmelden?</h2><p class="muted">Das zuerst gewählte Training ist bereits ausgewählt. Bis zum Start der allerersten Trainingseinheit gilt: pro Teilnehmer nur eine Anmeldung pro Kalenderwoche. Danach gilt diese Einschränkung nicht mehr.</p><div id="multiTrainingList"></div><div class="actions"><button id="multiConfirmBtn" class="success">Auswahl anmelden</button><button id="multiSkipBtn" class="secondary">Nur dieses Training</button></div></div></div>
 
 <div id="successModal" class="modal"><div class="modal-box" style="max-width:380px;text-align:center"><h2>✅ Erfolgreich eingetragen</h2><p id="successText">Die Anmeldung wurde gespeichert.</p><button id="successOkBtn">OK</button></div></div>
+
+
+<div id="validationModal" class="modal"><div class="modal-box" style="max-width:460px;text-align:center">
+  <h2>⚠️ Eingabe prüfen</h2>
+  <p id="validationIntro">Bitte korrigiere deine Angaben.</p>
+  <div id="validationMessage" class="validation-box"></div>
+  <button id="validationOkBtn" class="secondary">OK, ich korrigiere es</button>
+</div></div>
 
 <div id="cancel48Modal" class="modal"><div class="modal-box" style="max-width:460px;text-align:center">
   <h2>48h-Regel / Platzfreigabe</h2>
@@ -309,6 +318,29 @@ function openReg(id){
 }
 
 
+
+function clearInputErrors(){
+  ['firstName','lastName','email','phone'].forEach(id=>{
+    const el=$(id);
+    if(el) el.classList.remove('field-error');
+  });
+}
+
+function showValidationPopup(messages, focusId){
+  const list = Array.isArray(messages) ? messages : [messages];
+  $('validationMessage').innerHTML = '<ul class="validation-list">' + list.map(m=>'<li>'+esc(m)+'</li>').join('') + '</ul>';
+  $('validationModal').classList.add('show');
+  if(focusId) {
+    setTimeout(()=>{ const el=$(focusId); if(el) el.focus(); }, 50);
+  }
+}
+
+function markInputError(id){
+  const el=$(id);
+  if(el) el.classList.add('field-error');
+}
+
+
 function isValidEmailSimple(email){
   const value=String(email||'').trim();
   return value.includes('@') && value.indexOf('@')>0 && value.indexOf('@')<value.length-1;
@@ -333,10 +365,31 @@ function isEuropeanPhoneNumber(phone){
 
 function beginRegistrationFlow(){
   if(!selectedTraining)return;
+  clearInputErrors();
   const first_name=$('firstName').value.trim(), last_name=$('lastName').value.trim(), email=$('email').value.trim(), phone=$('phone').value.trim();
-  if(!first_name||!last_name||!email||!phone)return alert('Vorname, Nachname, E-Mail und Natelnummer sind nötig.');
-  if(!isValidEmailSimple(email))return alert('Bitte eine gültige E-Mail-Adresse mit @ eingeben.');
-  if(!isEuropeanPhoneNumber(phone))return alert('Bitte Natelnummer mit europäischer Landesvorwahl eingeben, z.B. +41 79 792 23 95.');
+  const validationMessages=[];
+  let focusId='';
+
+  if(!first_name){ validationMessages.push('Bitte gib deinen Vornamen ein.'); markInputError('firstName'); focusId ||= 'firstName'; }
+  if(!last_name){ validationMessages.push('Bitte gib deinen Nachnamen ein.'); markInputError('lastName'); focusId ||= 'lastName'; }
+  if(!email){
+    validationMessages.push('Bitte gib deine E-Mail-Adresse ein.');
+    markInputError('email'); focusId ||= 'email';
+  } else if(!isValidEmailSimple(email)){
+    validationMessages.push('Deine E-Mail-Adresse ist nicht korrekt. Sie muss mindestens ein @ enthalten, zum Beispiel max.muster@bluewin.ch.');
+    markInputError('email'); focusId ||= 'email';
+  }
+  if(!phone){
+    validationMessages.push('Bitte gib deine Natelnummer ein.');
+    markInputError('phone'); focusId ||= 'phone';
+  } else if(!isEuropeanPhoneNumber(phone)){
+    validationMessages.push('Deine Natelnummer ist nicht korrekt. Bitte gib sie mit europäischer Landesvorwahl ein, zum Beispiel +41 79 792 23 95 oder +49 171 1234567.');
+    markInputError('phone'); focusId ||= 'phone';
+  }
+
+  if(validationMessages.length){
+    return showValidationPopup(validationMessages, focusId);
+  }
 
   const existingParticipant =
     (selectedExistingParticipantId ? participantCache.find(p=>p.id===selectedExistingParticipantId) : null) ||
@@ -1242,9 +1295,8 @@ document.addEventListener('click', function(e){
   if(!menu || !btn) return;
   if(!menu.contains(e.target) && e.target !== btn) menu.classList.remove('show');
 });
-$('menuBtn').onclick=(e)=>{e.stopPropagation();toggleViewMenu()}; $('firstName').addEventListener('input',handleFirstNameInput); $('firstName').addEventListener('focus',renderParticipantSuggestions); $('participantSuggestionList').addEventListener('click',handleSuggestionClick); document.addEventListener('click',function(e){const box=$('participantSuggestionList'); if(box && !box.contains(e.target) && e.target !== $('firstName')) box.classList.remove('show');}); $('loginBtn').onclick=()=>{closeViewMenu();$('loginCard').classList.toggle('hidden')}; $('doLogin').onclick=login; $('logoutBtn').onclick=()=>{closeViewMenu();logout()}; $('showMemberTrainingsBtn').onclick=toggleMemberExportBox; if($('showNextTrainingBtn')) $('showNextTrainingBtn').onclick=showNextTrainingOverview; $('exportMemberCsvBtn').onclick=exportSelectedMemberCsv; $('exportMemberIcsBtn').onclick=exportSelectedMemberIcs; $('memberExportSelect').onchange=renderSelectedMemberTrainings; $('userViewBtn').onclick=()=>setView('user'); $('teacherViewBtn').onclick=()=>setView('teacher'); $('adminViewBtn').onclick=()=>setView('admin'); $('todayBtn').onclick=()=>{$('teacherDate').value=isoToday();loadTeacher()}; $('reloadTeacherBtn').onclick=loadTeacher; $('saveTraining').onclick=createTraining; $('confirmReg').onclick=beginRegistrationFlow; $('cancelReg').onclick=()=>$('regModal').classList.remove('show'); $('reloadParticipants').onclick=loadParticipants; $('createStaffBtn').onclick=createStaffUser; $('exportParticipantsBtn').onclick=exportParticipants; $('deleteParticipantsListBtn').onclick=deleteParticipantsList; $('exportVisitsBtn').onclick=exportVisits; $('saveSettings').onclick=saveSettingsLocal; $('importParticipantsFile').onchange=e=>{if(e.target.files[0])importParticipants(e.target.files[0])}; $('tckYesBtn').onclick=()=>answerTck(true); $('tckNoBtn').onclick=()=>answerTck(false); $('whatsappYesBtn').onclick=()=>answerWhatsapp(true); $('whatsappNoBtn').onclick=()=>answerWhatsapp(false); $('multiConfirmBtn').onclick=()=>completeRegistration(true); $('multiSkipBtn').onclick=()=>completeRegistration(false); $('successOkBtn').onclick=()=>$('successModal').classList.remove('show'); $('confirmCancel48Btn').onclick=confirmCancelWithin48h; $('abortCancel48Btn').onclick=abortCancelWithin48h; $('saveEditParticipantBtn').onclick=saveEditParticipant; $('cancelEditParticipantBtn').onclick=()=>$('editParticipantModal').classList.remove('show'); $('saveEditTrainingBtn').onclick=saveEditTraining; $('cancelEditTrainingBtn').onclick=()=>$('editTrainingModal').classList.remove('show');
+$('menuBtn').onclick=(e)=>{e.stopPropagation();toggleViewMenu()}; $('firstName').addEventListener('input',handleFirstNameInput); $('firstName').addEventListener('focus',renderParticipantSuggestions); $('participantSuggestionList').addEventListener('click',handleSuggestionClick); document.addEventListener('click',function(e){const box=$('participantSuggestionList'); if(box && !box.contains(e.target) && e.target !== $('firstName')) box.classList.remove('show');}); $('loginBtn').onclick=()=>{closeViewMenu();$('loginCard').classList.toggle('hidden')}; $('doLogin').onclick=login; $('logoutBtn').onclick=()=>{closeViewMenu();logout()}; $('showMemberTrainingsBtn').onclick=toggleMemberExportBox; if($('showNextTrainingBtn')) $('showNextTrainingBtn').onclick=showNextTrainingOverview; $('exportMemberCsvBtn').onclick=exportSelectedMemberCsv; $('exportMemberIcsBtn').onclick=exportSelectedMemberIcs; $('memberExportSelect').onchange=renderSelectedMemberTrainings; $('userViewBtn').onclick=()=>setView('user'); $('teacherViewBtn').onclick=()=>setView('teacher'); $('adminViewBtn').onclick=()=>setView('admin'); $('todayBtn').onclick=()=>{$('teacherDate').value=isoToday();loadTeacher()}; $('reloadTeacherBtn').onclick=loadTeacher; $('saveTraining').onclick=createTraining; $('confirmReg').onclick=beginRegistrationFlow; $('cancelReg').onclick=()=>$('regModal').classList.remove('show'); $('reloadParticipants').onclick=loadParticipants; $('createStaffBtn').onclick=createStaffUser; $('exportParticipantsBtn').onclick=exportParticipants; $('deleteParticipantsListBtn').onclick=deleteParticipantsList; $('exportVisitsBtn').onclick=exportVisits; $('saveSettings').onclick=saveSettingsLocal; $('importParticipantsFile').onchange=e=>{if(e.target.files[0])importParticipants(e.target.files[0])}; $('tckYesBtn').onclick=()=>answerTck(true); $('tckNoBtn').onclick=()=>answerTck(false); $('whatsappYesBtn').onclick=()=>answerWhatsapp(true); $('whatsappNoBtn').onclick=()=>answerWhatsapp(false); $('multiConfirmBtn').onclick=()=>completeRegistration(true); $('multiSkipBtn').onclick=()=>completeRegistration(false); $('successOkBtn').onclick=()=>$('successModal').classList.remove('show'); if($('validationOkBtn')) $('validationOkBtn').onclick=()=>$('validationModal').classList.remove('show'); ['firstName','lastName','email','phone'].forEach(id=>{ if($(id)) $(id).addEventListener('input',()=>$(id).classList.remove('field-error')); }); $('confirmCancel48Btn').onclick=confirmCancelWithin48h; $('abortCancel48Btn').onclick=abortCancelWithin48h; $('saveEditParticipantBtn').onclick=saveEditParticipant; $('cancelEditParticipantBtn').onclick=()=>$('editParticipantModal').classList.remove('show'); $('saveEditTrainingBtn').onclick=saveEditTraining; $('cancelEditTrainingBtn').onclick=()=>$('editTrainingModal').classList.remove('show');
 init();
 </script>
 </body>
 </html>
-
