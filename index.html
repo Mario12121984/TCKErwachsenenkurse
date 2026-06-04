@@ -32,7 +32,7 @@
 
   <section id="loginCard" class="card hidden"><h2>Admin / Trainer Login</h2><label>Benutzername</label><input id="loginEmail" type="text" placeholder="z.B. mario"><label>Passwort</label><input id="loginPassword" type="password"><button id="doLogin">Anmelden</button><p class="muted">Login ohne E-Mail: Admins und Trainer melden sich mit Benutzername und Passwort an.</p></section>
 
-  <section id="teacherCard" class="card hidden"><h2>TL Tagesansicht</h2><div class="grid3"><div><label>Datum</label><input id="teacherDate" type="date"></div><button id="todayBtn" class="secondary">Heute</button><button id="reloadTeacherBtn" class="secondary">Aktualisieren</button></div><div id="teacherList"></div></section>
+  <section id="teacherCard" class="card hidden"><h2>TL Tagesansicht</h2><div class="grid"><div><label>Datum</label><input id="teacherDate" type="date"></div><button id="todayBtn" class="secondary">Heute</button></div><div id="teacherList"></div></section>
 
   <div id="mainLayout" class="layout">
     <div>
@@ -1532,6 +1532,7 @@ $('menuBtn').onclick=(e)=>{e.stopPropagation();toggleViewMenu()}; $('firstName')
 $('trainerChangeSaveBtn')?.addEventListener('click', saveTrainerChangeParticipant);
 $('trainerChangeCancelBtn')?.addEventListener('click', ()=>$('trainerChangeModal').classList.remove('show'));
 
+$('teacherDate')?.addEventListener('change', loadTeacher);
 init();
 </script>
 </body>
