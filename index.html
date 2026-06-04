@@ -347,7 +347,7 @@ function isValidEmailSimple(email){
 }
 
 function normalizedPhoneForValidation(phone){
-  return String(phone||'').trim().replace(/[\\s().\\-\\/]/g,'');
+  return String(phone||'').trim().replace(/[\s().\-\/]/g,'');
 }
 
 function isEuropeanPhoneNumber(phone){
@@ -360,7 +360,7 @@ function isEuropeanPhoneNumber(phone){
     '+420','+421','+423',
     '+30','+31','+32','+33','+34','+36','+39','+40','+41','+43','+44','+45','+46','+47','+48','+49'
   ];
-  return /^\\+[0-9]{7,15}$/.test(normalized) && europeanPrefixes.some(prefix=>normalized.startsWith(prefix));
+  return /^\+[0-9]{7,15}$/.test(normalized) && europeanPrefixes.some(prefix=>normalized.startsWith(prefix));
 }
 
 function beginRegistrationFlow(){
