@@ -883,6 +883,12 @@ function participantLabel(p){
   return `${p.first_name||''} ${p.last_name||''}`.trim();
 }
 
+function attendanceLabel(status){
+  if(status === 'present') return 'Bestätigt';
+  if(status === 'absent') return 'Nicht da';
+  return 'Offen';
+}
+
 function statusLabel(status){
   if(status === 'cancelled') return 'Platz freigegeben';
   if(status === 'registered') return 'Angemeldet';
