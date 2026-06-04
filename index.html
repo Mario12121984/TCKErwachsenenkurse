@@ -884,9 +884,9 @@ function participantLabel(p){
 }
 
 function attendanceLabel(status){
-  if(status === 'present') return 'Bestaetigt';
+  if(status === 'present') return 'bestaetigt';
   if(status === 'absent') return 'Nicht da';
-  return 'Offen';
+  return 'angemeldet';
 }
 
 function statusLabel(status){
@@ -1329,9 +1329,9 @@ async function exportVisits(){
   if(error)return alert('Supabase Fehler: '+error.message);
 
   function attendanceExportLabel(value){
-    if(value==='present') return 'Bestaetigt';
+    if(value==='present') return 'bestaetigt';
     if(value==='absent') return 'Nicht da';
-    return 'Offen';
+    return 'angemeldet';
   }
 
   const groups=new Map();
