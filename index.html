@@ -33,7 +33,51 @@ body{overflow-x:hidden}.container{width:100%}img{max-width:100%;height:auto}
   body{padding:8px}.card{padding:12px}.header h1{font-size:22px}.summary{grid-template-columns:1fr}.responsive-table td{display:block}.responsive-table td::before{display:block;margin-bottom:3px;min-width:0}.actions{gap:6px}.box{padding:10px}
 }
 
-  </style>
+  
+@media(max-width:850px){
+  .teacher-table thead{display:none!important;}
+  .teacher-table tr{
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    gap:8px!important;
+    padding:8px!important;
+  }
+  .teacher-table td{
+    display:flex!important;
+    align-items:center!important;
+    border:0!important;
+    padding:4px!important;
+  }
+  .teacher-table td::before{display:none!important;content:none!important;}
+  .teacher-table td:first-child{
+    flex:1!important;
+    font-weight:bold;
+  }
+  .teacher-table .attendance-check{
+    margin:0 auto!important;
+  }
+  .participant-action{
+    min-width:40px!important;
+    width:40px!important;
+    padding:6px!important;
+    overflow:hidden!important;
+    white-space:nowrap!important;
+    text-indent:-9999px!important;
+    position:relative!important;
+  }
+  .participant-action::after{
+    content:"⋯"!important;
+    text-indent:0!important;
+    position:absolute!important;
+    left:0;right:0;top:50%;
+    transform:translateY(-50%);
+    text-align:center;
+    font-size:24px;
+  }
+}
+
+</style>
 </head>
 <body>
 <div class="container">
