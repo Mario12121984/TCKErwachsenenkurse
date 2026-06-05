@@ -1285,6 +1285,60 @@ async function saveTrainerChangeParticipant(){
   if(selectedTraining) await selectTraining(selectedTraining.id);
 }
 
+
+function teacherWhatsappAvailable(t){
+  const start=trainingStartsAt(t);
+  if(!start) return false;
+  return Date.now() >= start.getTime() - 48*60*60*1000;
+}
+
+function buildTeacherWhatsappText(t, rows){
+  const activeRows=(rows||[]).filter(r=>r.status==='registered');
+  const releasedRows=(rows||[]).filter(r=>r.status==='cancelled');
+  const lines=[];
+  lines.push('TCK Teilnehmerliste');
+  lines.push(fmt(t));
+  if(t.notes) lines.push('Notiz: '+String(t.notes));
+  lines.push('');
+  lines.push('Teilnehmer ('+activeRows.length+'/'+t.max_participants+'):');
+  if(activeRows.length){
+    activeRows.forEach((r,i)=>{
+      const p=r.participants||{};
+      const name=((p.first_name||'')+' '+(p.last_name||'')).trim() || 'Teilnehmer';
+      const phone=p.phone || p.email || '';
+      lines.push((i+1)+'. '+name+(phone ? ' · '+phone : ''));
+    });
+  } else {
+    lines.push('- Keine Teilnehmer eingetragen');
+  }
+  if(releasedRows.length){
+    lines.push('');
+    lines.push('Platz freigegeben:');
+    releasedRows.forEach((r,i)=>{
+      const p=r.participants||{};
+      const name=((p.first_name||'')+' '+(p.last_name||'')).trim() || 'Teilnehmer';
+      lines.push((i+1)+'. '+name);
+    });
+  }
+  return lines.join('\n');
+}
+
+async function shareTeacherParticipantsWhatsapp(trainingId){
+  const t=trainings.find(x=>x.id===trainingId);
+  if(!t) return alert('Training nicht gefunden.');
+  if(!teacherWhatsappAvailable(t)) return alert('Die WhatsApp-Teilnehmerliste ist erst 48 Stunden vor Trainingsbeginn verfügbar.');
+  const {data,error}=await supabaseClient
+    .from('registrations')
+    .select('id,status,created_at,participants(first_name,last_name,phone,email)')
+    .eq('training_id',trainingId)
+    .in('status',['registered','cancelled'])
+    .order('created_at');
+  if(error) return alert('Teilnehmerliste konnte nicht geladen werden: '+error.message);
+  const text=buildTeacherWhatsappText(t,data||[]);
+  const url='https://wa.me/?text='+encodeURIComponent(text);
+  window.open(url,'_blank','noopener');
+}
+
 async function loadTeacher(){
   const d=$('teacherDate').value;
   const todays=trainings.filter(t=>t.date===d);
@@ -1312,6 +1366,10 @@ async function loadTeacher(){
       <div class="box" style="margin:12px 0;background:#eff6ff;border-color:#bfdbfe">
         <h3>Teilnehmer hinzufügen</h3>
         ${canEditThisTraining ? `<button class="success" onclick="teacherAddParticipant('${t.id}')">Teilnehmer hinzufügen</button>` : `<p class="muted">Dieses Training kann durch den Tennislehrer nicht mehr bearbeitet werden. Änderungen sind nur noch durch den Admin möglich.</p>`}
+      </div>
+      <div class="box" style="margin:12px 0;background:#f0fdf4;border-color:#bbf7d0">
+        <h3>WhatsApp Teilnehmerliste</h3>
+        ${teacherWhatsappAvailable(t) ? `<button class="success" onclick="shareTeacherParticipantsWhatsapp('${t.id}')">Teilnehmerliste via WhatsApp senden</button>` : `<p class="muted">Die WhatsApp-Liste ist erst 48 Stunden vor Trainingsbeginn verfügbar.</p>`}
       </div>
       ${rows.length?`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Natel</th><th>Kursteilnahme</th><th>Änderung</th></tr></thead><tbody>${rows.map(r=>{
         const p=r.participants||{};
