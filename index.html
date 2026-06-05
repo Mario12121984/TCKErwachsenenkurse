@@ -758,27 +758,31 @@ async function adminDeleteRegistration(id){
 async function cancelRegistration(id){
   if(!selectedTraining) return;
 
-  const isStaffUser = ['admin','trainer'].includes(currentProfile?.role);
+  const isAdminUser = currentProfile?.role === 'admin';
+  const isTrainerUser = currentProfile?.role === 'trainer';
 
-  if(currentProfile?.role === 'trainer' && !publicChangeWindowOpen(selectedTraining)){
+  if(isTrainerUser && !publicChangeWindowOpen(selectedTraining)){
     return alert('Dieses Training kann durch den Tennislehrer nur bis 48 Stunden nach der Einheit bearbeitet werden. Danach kann nur noch der Admin Änderungen vornehmen.');
   }
 
-  if(!isStaffUser && !publicChangeWindowOpen(selectedTraining)){
+  if(!isAdminUser && !isTrainerUser && !publicChangeWindowOpen(selectedTraining)){
     return alert('Änderungen sind nicht mehr möglich. Platz freigeben ist nur bis 48 Stunden nach dem Training möglich.');
   }
 
-  const ok48 = isStaffUser ? true : cancellationKeeps48hRule(selectedTraining);
+  const moreThan48hBeforeStart = cancellationKeeps48hRule(selectedTraining);
 
-  // Mehr als 48h vor Trainingsbeginn: Anmeldung wird vollständig entfernt.
-  if(ok48){
+  // 48h-Regel:
+  // - Mehr als 48h vor Trainingsbeginn: Anmeldung wird vollständig entfernt.
+  // - Weniger als 48h vor Trainingsbeginn bis 48h nach Trainingsende: Platz wird nur freigegeben.
+  // - Trainer halten dieselbe 48h-Regel ein wie Teilnehmer.
+  // - Admin darf weiterhin direkt entfernen, falls eine manuelle Korrektur nötig ist.
+  if(moreThan48hBeforeStart || isAdminUser){
     const {error}=await supabaseClient.from('registrations').delete().eq('id',id);
     if(error)return alert('Supabase Fehler: '+error.message);
-    alert('Die Anmeldung wurde entfernt, da die 48h-Regel eingehalten wurde.');
+    alert(moreThan48hBeforeStart ? 'Die Anmeldung wurde entfernt, da die 48h-Regel eingehalten wurde.' : 'Admin-Korrektur: Die Anmeldung wurde entfernt.');
     await loadTrainings();
     if(selectedTraining) await selectTraining(selectedTraining.id);
   } else {
-    // Weniger als 48h vor Trainingsbeginn bis 48h nach Trainingsende: Platz wird freigegeben.
     pendingCancelRegistrationId=id;
     $('cancel48Modal').classList.add('show');
   }
@@ -1435,21 +1439,12 @@ async function exportVisits(){
     return 'angemeldet';
   }
 
-  function exportTrainingDayKey(t){
-    if(!t?.date) return '';
-    const d=new Date(t.date+'T00:00:00');
-    if(isNaN(d.getTime())) return '';
-    return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0');
+  function trainingSortKey(t){
+    const date=String(t?.date||'');
+    const time=String(t?.start_time||'').slice(0,8) || '00:00:00';
+    return date+'T'+time;
   }
 
-  function exportTrainingTime(t){
-    const von=String(t?.start_time||'').slice(0,5);
-    const bis=String(t?.end_time||'').slice(0,5);
-    return von+(bis?'-'+bis:'');
-  }
-
-  // Juni hat 30 Tage. Darum werden die Trainingstag-Spalten 01.06 bis 30.06 erzeugt.
-  const juneDays=Array.from({length:30},(_,i)=>String(i+1).padStart(2,'0')+'.06');
   const groups=new Map();
 
   (data||[]).forEach(r=>{
@@ -1461,7 +1456,6 @@ async function exportVisits(){
         last_name:p.last_name||'',
         email:p.email||'',
         count_registered:0,
-        day_entries:Object.fromEntries(juneDays.map(day=>[day,[]])),
         entries:[]
       });
     }
@@ -1470,18 +1464,19 @@ async function exportVisits(){
     const status=r.status||'registered';
     const training=r.trainings||{};
     const trainingText=exportTrainingDateTime(training);
-    const trainingDay=exportTrainingDayKey(training);
-    const timeText=exportTrainingTime(training);
 
     if(status==='cancelled'){
-      const text='Platz freigegeben: '+trainingText+' (Freigabe: '+exportDateTime(r.cancelled_at||r.created_at)+')';
-      g.entries.push(text);
-      if(g.day_entries[trainingDay]) g.day_entries[trainingDay].push((timeText?timeText+' ':'')+'Platz freigegeben');
+      g.entries.push({
+        sortKey:trainingSortKey(training),
+        text:'Platz freigegeben: '+trainingText+' (Freigabe: '+exportDateTime(r.cancelled_at||r.created_at)+')'
+      });
     } else {
       const label=attendanceExportLabel(r.attendance_status);
       g.count_registered++;
-      g.entries.push(label+': '+trainingText+' (Anmeldung: '+exportDateTime(r.created_at)+')');
-      if(g.day_entries[trainingDay]) g.day_entries[trainingDay].push((timeText?timeText+' ':'')+label);
+      g.entries.push({
+        sortKey:trainingSortKey(training),
+        text:label+': '+trainingText+' (Anmeldung: '+exportDateTime(r.created_at)+')'
+      });
     }
   });
 
@@ -1494,8 +1489,7 @@ async function exportVisits(){
     'Nachname',
     'E-Mail',
     'Anzahl Trainings',
-    ...juneDays.map(day=>'Trainingstag '+day),
-    'Anmeldungen / Platz freigegeben / Kursteilnahme mit Datum Uhrzeit'
+    'Trainings nach Reihenfolge'
   ].join(';')+'\n';
 
   const body=rows.map(g=>[
@@ -1503,8 +1497,10 @@ async function exportVisits(){
     g.last_name,
     g.email,
     g.count_registered,
-    ...juneDays.map(day=>(g.day_entries[day]||[]).join(' | ')),
-    g.entries.join(' | ')
+    g.entries
+      .sort((a,b)=>a.sortKey.localeCompare(b.sortKey))
+      .map(e=>e.text)
+      .join(' | ')
   ].map(csvCell).join(';')).join('\n');
 
   // BOM hilft Excel, UTF-8 korrekt zu erkennen.
