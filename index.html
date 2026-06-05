@@ -245,7 +245,7 @@ function fmt(t){
     d.getFullYear();
   return `KW ${kw} · ${datum} ${String(t.start_time).slice(0,5)}-${String(t.end_time).slice(0,5)}`;
 }
-function download(name,content,type='text/plain;charset=utf-8'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
+function download(name,content,type='text/plain;charset=utf-8'){if(type.includes('csv')) content='\ufeff'+content; const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
 function csvCell(v){return '"'+String(v??'').replaceAll('"','""')+'"'}
 function applyLocalSettings(){const s=JSON.parse(localStorage.getItem('tck_settings')||'{}'); if(s.title){$('appTitle').textContent=s.title;$('settingsTitle').value=s.title} if(s.comment){$('appComment').textContent=s.comment;$('settingsComment').value=s.comment} if(s.logo){$('logo').src=s.logo;$('logo').style.display='block'}}
 function setView(v){
@@ -975,13 +975,18 @@ async function deleteParticipant(id){
 async function loadMemberOptions(){
   const {data,error}=await supabaseClient.from('participants').select('*').order('last_name').limit(1000);
   if(error){ participantCache=[]; return; }
-  participantCache=data||[];
+  participantCache=(data||[]).sort(participantSort);
   populateKnownParticipantSelect();
   populateMemberExportSelect();
 }
 
 function participantLabel(p){
   return `${p.first_name||''} ${p.last_name||''}`.trim();
+}
+function participantSort(a,b){
+  const an=((a.last_name||'')+' '+(a.first_name||'')).toLowerCase();
+  const bn=((b.last_name||'')+' '+(b.first_name||'')).toLowerCase();
+  return an.localeCompare(bn,'de');
 }
 
 function attendanceLabel(status){
@@ -1132,11 +1137,19 @@ async function exportSelectedMemberCsv(){
   const participantId=$('memberExportSelect').value;
   const p=participantCache.find(x=>x.id===participantId)||{};
   const filename='tck_meine_trainings_'+String((p.last_name||p.first_name||'teilnehmer')).replaceAll(' ','_')+'.csv';
-  const csv='Datum;Von;Bis;Vorname;Nachname;E-Mail;Natel;Notizen;Status\n'+rows.map(r=>[
-    r.trainings?.date,r.trainings?.start_time,r.trainings?.end_time,
-    r.participants?.first_name,r.participants?.last_name,r.participants?.email,r.participants?.phone,
-    r.trainings?.notes,statusLabel(r.status)
+
+  // UTF-8 BOM sorgt dafür, dass Excel Umlaute korrekt erkennt.
+  // Natelnummer wird bewusst nicht exportiert.
+  const csv='\ufeffDatum;Von;Bis;Vorname;Nachname;Notizen;Status\n'+rows.map(r=>[
+    r.trainings?.date,
+    r.trainings?.start_time,
+    r.trainings?.end_time,
+    r.participants?.first_name,
+    r.participants?.last_name,
+    r.trainings?.notes,
+    statusLabel(r.status)
   ].map(csvCell).join(';')).join('\n');
+
   download(filename,csv,'text/csv;charset=utf-8');
 }
 
