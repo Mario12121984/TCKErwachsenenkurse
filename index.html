@@ -11,6 +11,28 @@
 .released-badge{display:inline-block;background:#fed7aa;color:#9a3412;border-radius:999px;padding:4px 9px;font-weight:bold;font-size:12px}
 .attendance-present{background:#16a34a!important}.attendance-absent{background:#dc2626!important}.attendance-unknown{background:#6b7280!important}.attendance-check{width:34px;height:34px;min-width:34px;min-height:34px;border:2px solid #9ca3af;border-radius:8px;background:#fff!important;color:#fff!important;padding:0;margin:0;display:inline-flex;align-items:center;justify-content:center;font-size:22px;line-height:1}.attendance-check.checked{background:#16a34a!important;border-color:#16a34a;color:#fff!important}.teacher-narrow{max-width:900px;margin-left:auto;margin-right:auto}.teacher-top{grid-template-columns:minmax(220px,292px) minmax(160px,292px);max-width:600px}.teacher-table th,.teacher-table td{white-space:normal}.field-error{border-color:#dc2626!important;background:#fef2f2!important}.validation-list{margin:12px 0 0;padding-left:20px;text-align:left}.validation-list li{margin:8px 0}.validation-box{border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:14px;padding:12px;margin-top:10px;text-align:left}
     @media(max-width:850px){.layout,.grid,.grid3{grid-template-columns:1fr}.sticky{position:static}.topbar{justify-content:flex-end}.topbar button{width:100%}.menu-button{width:auto!important}.menu-dropdown{right:0;left:auto}}
+
+/* Responsive Darstellung für Handy und Tablet */
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{overflow-x:hidden}.container{width:100%}img{max-width:100%;height:auto}
+@media(max-width:1050px){
+  .container{max-width:100%;padding:0 4px}.layout{grid-template-columns:340px 1fr;gap:12px}.card{padding:16px}.training{padding:13px}
+}
+@media(max-width:850px){
+  body{padding:10px;background:#eef2f7;font-size:16px}.container{max-width:100%;margin:0}.header{margin:12px 0 16px}.header h1{font-size:24px;line-height:1.2}.header p{font-size:15px;line-height:1.35}
+  .topbar{position:sticky;top:0;z-index:70;background:#eef2f7;padding:6px 0;justify-content:space-between}.menu-wrap{margin-left:auto}.menu-dropdown{position:fixed;right:10px;top:58px;left:10px;min-width:auto}.menu-dropdown button{text-align:center}
+  .layout,.grid,.grid3,.teacher-top{display:grid;grid-template-columns:1fr!important;gap:10px;max-width:none}.card{border-radius:14px;padding:14px;margin:10px 0;box-shadow:0 6px 18px rgba(0,0,0,.08)}
+  h2{font-size:21px;margin:4px 0 12px}h3{font-size:18px}.box{padding:12px}.training{border-radius:14px;padding:14px;margin:10px 0}.training strong{display:block;font-size:16px;line-height:1.35}.training p{white-space:normal;line-height:1.35}
+  input,textarea,select,button{font-size:16px;min-height:46px}button{width:100%;margin-top:8px}.actions{grid-template-columns:1fr!important;gap:8px}.participant-action{width:100%;min-height:40px}.month-header{min-height:46px;font-size:16px;padding:10px 12px}
+  .modal{padding:10px;align-items:flex-start}.modal-box{margin-top:18px;max-width:100%!important;border-radius:16px;padding:16px}
+  .summary{grid-template-columns:1fr 1fr}.num{font-size:24px}.teacher-narrow{max-width:100%}
+  .table-wrap{overflow:visible}.responsive-table{border-collapse:separate;border-spacing:0 10px}.responsive-table thead{display:none}.responsive-table,.responsive-table tbody,.responsive-table tr,.responsive-table td{display:block;width:100%}.responsive-table tr{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:10px;margin:10px 0;box-shadow:0 4px 12px rgba(0,0,0,.05)}.responsive-table td{border:0;border-bottom:1px solid #f1f5f9;padding:8px 4px;white-space:normal;display:flex;gap:10px;justify-content:space-between;align-items:flex-start}.responsive-table td:last-child{border-bottom:0}.responsive-table td::before{content:attr(data-label);font-weight:bold;color:#374151;min-width:105px;flex:0 0 38%;}.responsive-table td:empty{display:none}.responsive-table td button{margin:0}.teacher-table td::before{min-width:95px;flex-basis:34%}
+  #trainingDetail p:first-child b,#teacherList h3{font-size:17px;line-height:1.35}#teacherList .box{margin-bottom:12px}
+}
+@media(max-width:480px){
+  body{padding:8px}.card{padding:12px}.header h1{font-size:22px}.summary{grid-template-columns:1fr}.responsive-table td{display:block}.responsive-table td::before{display:block;margin-bottom:3px;min-width:0}.actions{gap:6px}.box{padding:10px}
+}
+
   </style>
 </head>
 <body>
@@ -143,6 +165,24 @@ let currentProfile=null, currentView='user', trainings=[], selectedTraining=null
 let pendingRegistration=null, pendingTckMember=false, pendingWhatsapp=false, selectedExistingParticipantId=null, pendingCancelRegistrationId=null;
 let selectedTrainingRegisteredParticipantIds=new Set();
 const $=id=>document.getElementById(id); const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
+
+function enhanceResponsiveTables(){
+  document.querySelectorAll('table').forEach(table=>{
+    table.classList.add('responsive-table');
+    const headers=[...table.querySelectorAll('thead th')].map(th=>th.textContent.trim());
+    table.querySelectorAll('tbody tr').forEach(tr=>{
+      [...tr.children].forEach((td,i)=>{
+        if(headers[i] && !td.getAttribute('data-label')) td.setAttribute('data-label',headers[i]);
+      });
+    });
+  });
+}
+function initResponsiveEnhancements(){
+  enhanceResponsiveTables();
+  const observer=new MutationObserver(()=>enhanceResponsiveTables());
+  observer.observe(document.body,{childList:true,subtree:true});
+}
+
 function isoToday(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function getCalendarWeek(dateStr){
   const d=new Date(dateStr+'T00:00:00');
@@ -183,7 +223,7 @@ function setView(v){
   else if(v==='user') renderNextTrainingsOverview();
   closeViewMenu();
 }
-async function init(){applyLocalSettings(); $('teacherDate').value=isoToday(); const {data:{user}}=await supabaseClient.auth.getUser(); if(user){const {data:profile}=await supabaseClient.from('profiles').select('*').eq('id',user.id).maybeSingle(); if(profile){currentProfile=profile; $('userBadge').textContent=`Angemeldet: ${profile.full_name} (${profile.role})`; $('userBadge').classList.remove('hidden'); $('loginBtn').classList.add('hidden'); $('logoutBtn').classList.remove('hidden');}} await loadTrainings(); await loadMemberOptions(); setView(currentProfile?.role==='admin'?'admin':(currentProfile?.role==='trainer'?'teacher':'user'));}
+async function init(){initResponsiveEnhancements();applyLocalSettings(); $('teacherDate').value=isoToday(); const {data:{user}}=await supabaseClient.auth.getUser(); if(user){const {data:profile}=await supabaseClient.from('profiles').select('*').eq('id',user.id).maybeSingle(); if(profile){currentProfile=profile; $('userBadge').textContent=`Angemeldet: ${profile.full_name} (${profile.role})`; $('userBadge').classList.remove('hidden'); $('loginBtn').classList.add('hidden'); $('logoutBtn').classList.remove('hidden');}} await loadTrainings(); await loadMemberOptions(); setView(currentProfile?.role==='admin'?'admin':(currentProfile?.role==='trainer'?'teacher':'user'));}
 function staffEmailFromUsername(username){
   const u=String(username||'').trim().toLowerCase();
   if(!u) return '';
