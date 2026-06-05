@@ -1302,12 +1302,16 @@ function teacherWhatsappAvailable(t){
   return Date.now() >= start.getTime() - 48*60*60*1000;
 }
 
+function whatsappBold(value){
+  return '*'+String(value||'').replace(/\*/g,'').trim()+'*';
+}
+
 function buildTeacherWhatsappText(t, rows){
   const activeRows=(rows||[]).filter(r=>r.status==='registered');
   const releasedRows=(rows||[]).filter(r=>r.status==='cancelled');
   const lines=[];
   lines.push('TCK Teilnehmerliste');
-  lines.push(fmt(t));
+  lines.push(whatsappBold(fmt(t)));
   if(t.notes) lines.push('Notiz: '+String(t.notes));
   lines.push('');
   lines.push('Teilnehmer ('+activeRows.length+'/'+t.max_participants+'):');
@@ -1315,8 +1319,8 @@ function buildTeacherWhatsappText(t, rows){
     activeRows.forEach((r,i)=>{
       const p=r.participants||{};
       const name=((p.first_name||'')+' '+(p.last_name||'')).trim() || 'Teilnehmer';
-      const phone=p.phone || p.email || '';
-      lines.push((i+1)+'. '+name+(phone ? ' · '+phone : ''));
+      // Für WhatsApp werden bewusst nur die Namen versendet, keine Natelnummer und keine E-Mail.
+      lines.push((i+1)+'. '+whatsappBold(name));
     });
   } else {
     lines.push('- Keine Teilnehmer eingetragen');
@@ -1327,7 +1331,7 @@ function buildTeacherWhatsappText(t, rows){
     releasedRows.forEach((r,i)=>{
       const p=r.participants||{};
       const name=((p.first_name||'')+' '+(p.last_name||'')).trim() || 'Teilnehmer';
-      lines.push((i+1)+'. '+name);
+      lines.push((i+1)+'. '+whatsappBold(name));
     });
   }
   return lines.join('\n');
