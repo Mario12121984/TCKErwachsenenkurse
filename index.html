@@ -245,6 +245,16 @@ function fmt(t){
     d.getFullYear();
   return `KW ${kw} · ${datum} ${String(t.start_time).slice(0,5)}-${String(t.end_time).slice(0,5)}`;
 }
+
+function fmtDateDMY(dateStr){
+  if(!dateStr) return '';
+  const parts=String(dateStr).split('-');
+  if(parts.length===3) return `${parts[2]}.${parts[1]}.${parts[0]}`;
+  const d=new Date(dateStr);
+  if(isNaN(d.getTime())) return String(dateStr);
+  return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear();
+}
+
 function download(name,content,type='text/plain;charset=utf-8'){if(type.includes('csv')) content='\ufeff'+content; const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
 function csvCell(v){return '"'+String(v??'').replaceAll('"','""')+'"'}
 function applyLocalSettings(){const s=JSON.parse(localStorage.getItem('tck_settings')||'{}'); if(s.title){$('appTitle').textContent=s.title;$('settingsTitle').value=s.title} if(s.comment){$('appComment').textContent=s.comment;$('settingsComment').value=s.comment} if(s.logo){$('logo').src=s.logo;$('logo').style.display='block'}}
@@ -1079,7 +1089,7 @@ async function renderSelectedMemberTrainings(){
   }
 
   const name=participantLabel(p) || 'Teilnehmer';
-  $('trainingDetail').innerHTML=`<p><b>${esc(name)}</b></p>${rows.length?`<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Von</th><th>Bis</th><th>Notizen</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(r.trainings?.date)}</td><td>${esc(String(r.trainings?.start_time||'').slice(0,5))}</td><td>${esc(String(r.trainings?.end_time||'').slice(0,5))}</td><td>${esc(r.trainings?.notes||'')}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${renderMemberCancelCell(r)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Keine gebuchten Trainings vorhanden.</p>'}`;
+  $('trainingDetail').innerHTML=`<p><b>${esc(name)}</b></p>${rows.length?`<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Von</th><th>Bis</th><th>Notizen</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(fmtDateDMY(r.trainings?.date))}</td><td>${esc(String(r.trainings?.start_time||'').slice(0,5))}</td><td>${esc(String(r.trainings?.end_time||'').slice(0,5))}</td><td>${esc(r.trainings?.notes||'')}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${renderMemberCancelCell(r)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Keine gebuchten Trainings vorhanden.</p>'}`;
 }
 
 function registrationTrainingObject(registrationRow){
@@ -1141,7 +1151,7 @@ async function exportSelectedMemberCsv(){
   // UTF-8 BOM sorgt dafür, dass Excel Umlaute korrekt erkennt.
   // Natelnummer wird bewusst nicht exportiert.
   const csv='\ufeffDatum;Von;Bis;Vorname;Nachname;Notizen;Status\n'+rows.map(r=>[
-    r.trainings?.date,
+    fmtDateDMY(r.trainings?.date),
     r.trainings?.start_time,
     r.trainings?.end_time,
     r.participants?.first_name,
