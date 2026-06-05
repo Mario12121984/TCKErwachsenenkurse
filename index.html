@@ -183,7 +183,7 @@ function setView(v){
   else if(v==='user') renderNextTrainingsOverview();
   closeViewMenu();
 }
-async function init(){await supabaseClient.auth.signOut(); applyLocalSettings(); $('teacherDate').value=isoToday(); const {data:{user}}=await supabaseClient.auth.getUser(); if(user){const {data:profile}=await supabaseClient.from('profiles').select('*').eq('id',user.id).maybeSingle(); if(profile){currentProfile=profile; $('userBadge').textContent=`Angemeldet: ${profile.full_name} (${profile.role})`; $('userBadge').classList.remove('hidden'); $('loginBtn').classList.add('hidden'); $('logoutBtn').classList.remove('hidden');}} await loadTrainings(); await loadMemberOptions(); setView(currentProfile?.role==='admin'?'admin':(currentProfile?.role==='trainer'?'teacher':'user'));}
+async function init(){applyLocalSettings(); $('teacherDate').value=isoToday(); const {data:{user}}=await supabaseClient.auth.getUser(); if(user){const {data:profile}=await supabaseClient.from('profiles').select('*').eq('id',user.id).maybeSingle(); if(profile){currentProfile=profile; $('userBadge').textContent=`Angemeldet: ${profile.full_name} (${profile.role})`; $('userBadge').classList.remove('hidden'); $('loginBtn').classList.add('hidden'); $('logoutBtn').classList.remove('hidden');}} await loadTrainings(); await loadMemberOptions(); setView(currentProfile?.role==='admin'?'admin':(currentProfile?.role==='trainer'?'teacher':'user'));}
 function staffEmailFromUsername(username){
   const u=String(username||'').trim().toLowerCase();
   if(!u) return '';
