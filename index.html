@@ -294,7 +294,39 @@ function setView(v){
   else if(v==='user') renderNextTrainingsOverview();
   closeViewMenu();
 }
-async function init(){initResponsiveEnhancements();applyLocalSettings(); $('teacherDate').value=isoToday(); const {data:{user}}=await supabaseClient.auth.getUser(); if(user){const {data:profile}=await supabaseClient.from('profiles').select('*').eq('id',user.id).maybeSingle(); if(profile){currentProfile=profile; $('userBadge').textContent=`Angemeldet: ${profile.full_name} (${profile.role})`; $('userBadge').classList.remove('hidden'); $('loginBtn').classList.add('hidden'); $('logoutBtn').classList.remove('hidden');}} await loadTrainings(); await loadMemberOptions(); setView(currentProfile?.role==='admin'?'admin':(currentProfile?.role==='trainer'?'teacher':'user'));}
+function staffModeRequested(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get('staff') === '1';
+}
+
+async function init(){
+  initResponsiveEnhancements();
+  applyLocalSettings();
+  $('teacherDate').value=isoToday();
+
+  // Öffentliche Links starten IMMER ohne gespeicherten Admin-/Trainer-Benutzer.
+  // Nur mit ?staff=1 wird eine bestehende Supabase-Session berücksichtigt.
+  if(!staffModeRequested()){
+    try{ await supabaseClient.auth.signOut({scope:'local'}); }catch(e){ console.warn('Lokale Session konnte nicht gelöscht werden:', e?.message || e); }
+    currentProfile=null;
+  } else {
+    const {data:{user}}=await supabaseClient.auth.getUser();
+    if(user){
+      const {data:profile}=await supabaseClient.from('profiles').select('*').eq('id',user.id).maybeSingle();
+      if(profile){
+        currentProfile=profile;
+        $('userBadge').textContent=`Angemeldet: ${profile.full_name} (${profile.role})`;
+        $('userBadge').classList.remove('hidden');
+        $('loginBtn').classList.add('hidden');
+        $('logoutBtn').classList.remove('hidden');
+      }
+    }
+  }
+
+  await loadTrainings();
+  await loadMemberOptions();
+  setView(currentProfile?.role==='admin'?'admin':(currentProfile?.role==='trainer'?'teacher':'user'));
+}
 function staffEmailFromUsername(username){
   const u=String(username||'').trim().toLowerCase();
   if(!u) return '';
@@ -308,9 +340,16 @@ async function login(){
   if(!email||!password) return alert('Bitte Benutzername und Passwort eingeben.');
   const {error}=await supabaseClient.auth.signInWithPassword({email,password});
   if(error) return alert('Login fehlgeschlagen: '+error.message);
-  location.reload();
+  const url = new URL(window.location.href);
+  url.searchParams.set('staff','1');
+  window.location.href = url.toString();
 }
-async function logout(){await supabaseClient.auth.signOut(); location.reload()}
+async function logout(){
+  await supabaseClient.auth.signOut();
+  const url = new URL(window.location.href);
+  url.searchParams.delete('staff');
+  window.location.href = url.toString();
+}
 async function loadTrainings(){
   const {data,error}=await supabaseClient.from('trainings_with_counts').select('*').order('date').order('start_time');
   if(error){$('trainingList').innerHTML='<p class="muted">Trainings konnten nicht geladen werden: '+esc(error.message)+'</p>';return}
