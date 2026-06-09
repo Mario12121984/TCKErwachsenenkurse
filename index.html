@@ -288,6 +288,7 @@ function belegungClass(t){
 }
 function renderSignupButton(t, stopPropagation=false, extraStyle=''){
   if(trainingIsFull(t)) return '';
+  if(!publicChangeWindowOpen(t)) return '';
   const stop = stopPropagation ? 'event.stopPropagation();' : '';
   const style = extraStyle ? ` style="${extraStyle}"` : '';
   return `<button class="success"${style} onclick="${stop}openReg('${t.id}')">Anmelden</button>`;
