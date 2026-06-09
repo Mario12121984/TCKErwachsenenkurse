@@ -94,6 +94,11 @@ body{overflow-x:hidden}.container{width:100%}img{max-width:100%;height:auto}
   }
 }
 
+
+.belegt-status{font-weight:bold}
+.belegt-status.free{color:#16a34a}
+.belegt-status.full{color:#dc2626}
+
 </style>
 </head>
 <body>
@@ -398,7 +403,7 @@ function renderTrainings(){
         : '';
       html+=`<div class="training ${selectedTraining?.id===t.id?'active':''}" onclick="selectTraining('${t.id}')">
         <strong>${esc(fmt(t))}</strong>
-        <p class="muted">Belegt: ${t.registration_count}/${t.max_participants}</p>
+        <p class="${t.registration_count>=t.max_participants?'belegt-status full':'belegt-status free'}">Belegt: ${t.registration_count}/${t.max_participants}</p>
         ${t.notes?`<p>${esc(t.notes)}</p>`:''}
         <div class="actions">
           <button class="success" onclick="event.stopPropagation();openReg('${t.id}')">Anmelden</button>
@@ -437,7 +442,7 @@ function renderNextTrainingsOverview(){
   $('trainingDetail').innerHTML=`<p class="muted">Die nächsten ${nextTrainings.length} Trainingseinheit(en)</p>`+
     nextTrainings.map(t=>`<div class="box" style="margin:10px 0">
       <h3 style="margin-top:0">${esc(fmt(t))}</h3>
-      <p class="muted">Belegt: ${t.registration_count}/${t.max_participants}</p>
+      <p class="${t.registration_count>=t.max_participants?'belegt-status full':'belegt-status free'}">Belegt: ${t.registration_count}/${t.max_participants}</p>
       ${t.notes?`<p>${esc(t.notes)}</p>`:''}
       <div class="actions">
         <button class="secondary" onclick="selectTraining('${t.id}')">Teilnehmer anzeigen</button>
