@@ -230,6 +230,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentProfile=null, currentView='user', trainings=[], selectedTraining=null, participantCache=[];
 let pendingRegistration=null, pendingTckMember=false, pendingWhatsapp=false, selectedExistingParticipantId=null, pendingCancelRegistrationId=null;
 let selectedTrainingRegisteredParticipantIds=new Set();
+let teacherOpenTrainingIds=new Set();
 const $=id=>document.getElementById(id); const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
 
 function enhanceResponsiveTables(){
@@ -948,7 +949,12 @@ async function cancelRegistration(id){
   // - Weniger als 48h vor Trainingsbeginn bis 48h nach Trainingsende: Platz wird nur freigegeben.
   // - Trainer halten dieselbe 48h-Regel ein wie Teilnehmer.
   // - Admin darf weiterhin direkt entfernen, falls eine manuelle Korrektur nötig ist.
-  if(moreThan48hBeforeStart || isAdminUser){
+  // Admin darf Anmeldungen nur noch im Admin-Bereich ändern/löschen.
+  if(isAdminUser && currentView!=='admin'){
+    return alert('Abmeldungen können durch den Admin nur in der Adminansicht geändert oder gelöscht werden.');
+  }
+
+  if(moreThan48hBeforeStart || (isAdminUser && currentView==='admin')){
     const {error}=await supabaseClient.from('registrations').delete().eq('id',id);
     if(error)return alert('Supabase Fehler: '+error.message);
     alert(moreThan48hBeforeStart ? 'Die Anmeldung wurde entfernt, da die 48h-Regel eingehalten wurde.' : 'Admin-Korrektur: Die Anmeldung wurde entfernt.');
@@ -1402,7 +1408,7 @@ function attendanceButtons(registrationId, attendance){
 function attendanceCheckbox(registrationId, attendance){
   const checked = attendance === 'present';
   const next = checked ? 'unknown' : 'present';
-  return `<button type="button" class="attendance-check ${checked ? 'checked' : ''}" aria-label="Kursteilnahme bestätigen" title="Kursteilnahme bestätigen" onclick="setAttendance('${registrationId}','${next}')">${checked ? '✓' : ''}</button>`;
+  return `<button type="button" class="attendance-check ${checked ? 'checked' : ''}" aria-label="Kursteilnahme bestätigen" title="Kursteilnahme bestätigen" onclick="event.stopPropagation();setAttendance('${registrationId}','${next}')">${checked ? '✓' : ''}</button>`;
 }
 
 function populateTrainerChangeSelect(){
@@ -1482,8 +1488,11 @@ async function saveTrainerChangeParticipant(){
   $('trainerChangeModal').classList.remove('show');
   await loadMemberOptions();
   await loadTrainings();
-  if(currentView==='teacher') await loadTeacher();
-  if(selectedTraining) await selectTraining(selectedTraining.id);
+  if(currentView==='teacher'){
+    await loadTeacher();
+  } else if(selectedTraining){
+    await selectTraining(selectedTraining.id);
+  }
 }
 
 
@@ -1567,10 +1576,10 @@ async function loadTeacher(){
     const rows=(data||[]).filter(r=>r.status==='registered' || r.status==='cancelled');
     const canEditThisTraining = canStaffEditTraining(t);
     const bodyId='teacher_body_'+String(t.id).replace(/[^0-9A-Za-z_-]/g,'_');
-    const isCollapsed=multipleTrainings;
+    const isCollapsed=multipleTrainings && !teacherOpenTrainingIds.has(String(t.id));
 
     html+=`<div class="training">
-      <div onclick="toggleTeacherTraining('${bodyId}')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px">
+      <div onclick="toggleTeacherTraining('${bodyId}','${t.id}')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px">
         <div>
           <h3 style="margin:0">${esc(fmt(t))}</h3>
           <p class="muted" style="margin:4px 0 0">${rows.filter(r=>r.status==='registered').length}/${t.max_participants} Teilnehmer</p>
@@ -1604,12 +1613,17 @@ async function loadTeacher(){
   $('teacherList').innerHTML=html||'<p class="muted">Für dieses Datum sind keine Trainings vorhanden.</p>';
 }
 
-function toggleTeacherTraining(bodyId){
+function toggleTeacherTraining(bodyId, trainingId){
   const body=document.getElementById(bodyId);
   const arrow=document.getElementById(bodyId+'_arrow');
   if(!body) return;
   body.classList.toggle('hidden');
-  if(arrow) arrow.textContent=body.classList.contains('hidden') ? '▼' : '▲';
+  const isClosed=body.classList.contains('hidden');
+  if(trainingId){
+    if(isClosed) teacherOpenTrainingIds.delete(String(trainingId));
+    else teacherOpenTrainingIds.add(String(trainingId));
+  }
+  if(arrow) arrow.textContent=isClosed ? '▼' : '▲';
 }
 
 async function deleteParticipantsList(){
@@ -1880,8 +1894,8 @@ function bindAppEvents(){
   if($('saveSettings')) $('saveSettings').onclick=saveSettingsLocal;
   if($('createStaffBtn')) $('createStaffBtn').onclick=createStaffUser;
 
-  if($('todayBtn')) $('todayBtn').onclick=()=>{$('teacherDate').value=isoToday();loadTeacher()};
-  if($('teacherDate')) $('teacherDate').addEventListener('change', loadTeacher);
+  if($('todayBtn')) $('todayBtn').onclick=()=>{teacherOpenTrainingIds.clear();$('teacherDate').value=isoToday();loadTeacher()};
+  if($('teacherDate')) $('teacherDate').addEventListener('change', ()=>{teacherOpenTrainingIds.clear();loadTeacher();});
 
   if($('confirmReg')) $('confirmReg').onclick=beginRegistrationFlow;
   if($('cancelReg')) $('cancelReg').onclick=()=>$('regModal').classList.remove('show');
