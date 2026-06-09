@@ -279,6 +279,20 @@ function fmtDateDMY(dateStr){
   return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear();
 }
 
+function trainingIsFull(t){
+  return Number(t?.registration_count || 0) >= Number(t?.max_participants || 0);
+}
+function belegungClass(t){
+  return trainingIsFull(t) ? 'belegt-status full' : 'belegt-status free';
+}
+function renderSignupButton(t, stopPropagation=false, extraStyle=''){
+  if(trainingIsFull(t)) return '';
+  const stop = stopPropagation ? 'event.stopPropagation();' : '';
+  const style = extraStyle ? ` style="${extraStyle}"` : '';
+  return `<button class="success"${style} onclick="${stop}openReg('${t.id}')">Anmelden</button>`;
+}
+
+
 function download(name,content,type='text/plain;charset=utf-8'){if(type.includes('csv')) content='\ufeff'+content; const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
 function csvCell(v){return '"'+String(v??'').replaceAll('"','""')+'"'}
 function applyLocalSettings(){const s=JSON.parse(localStorage.getItem('tck_settings')||'{}'); if(s.title){$('appTitle').textContent=s.title;$('settingsTitle').value=s.title} if(s.comment){$('appComment').textContent=s.comment;$('settingsComment').value=s.comment} if(s.logo){$('logo').src=s.logo;$('logo').style.display='block'}}
@@ -403,10 +417,10 @@ function renderTrainings(){
         : '';
       html+=`<div class="training ${selectedTraining?.id===t.id?'active':''}" onclick="selectTraining('${t.id}')">
         <strong>${esc(fmt(t))}</strong>
-        <p class="${t.registration_count>=t.max_participants?'belegt-status full':'belegt-status free'}">Belegt: ${t.registration_count}/${t.max_participants}</p>
+        <p class="${belegungClass(t)}">Belegt: ${t.registration_count}/${t.max_participants}</p>
         ${t.notes?`<p>${esc(t.notes)}</p>`:''}
         <div class="actions">
-          ${t.registration_count>=t.max_participants?'':'<button class="success" onclick="event.stopPropagation();openReg(\'${t.id}\')">Anmelden</button>'}
+          ${renderSignupButton(t,true)}
           ${adminActions}
         </div>
       </div>`;
@@ -442,11 +456,11 @@ function renderNextTrainingsOverview(){
   $('trainingDetail').innerHTML=`<p class="muted">Die nächsten ${nextTrainings.length} Trainingseinheit(en)</p>`+
     nextTrainings.map(t=>`<div class="box" style="margin:10px 0">
       <h3 style="margin-top:0">${esc(fmt(t))}</h3>
-      <p class="${t.registration_count>=t.max_participants?'belegt-status full':'belegt-status free'}">Belegt: ${t.registration_count}/${t.max_participants}</p>
+      <p class="${belegungClass(t)}">Belegt: ${t.registration_count}/${t.max_participants}</p>
       ${t.notes?`<p>${esc(t.notes)}</p>`:''}
       <div class="actions">
         <button class="secondary" onclick="selectTraining('${t.id}')">Teilnehmer anzeigen</button>
-        ${t.registration_count>=t.max_participants?'':'<button class="success" onclick="openReg(\'${t.id}\')">Anmelden</button>'}
+        ${renderSignupButton(t,false)}
       </div>
     </div>`).join('');
 }
@@ -490,12 +504,16 @@ async function selectTraining(id){
       <div class="table-wrap"><table><thead><tr><th>Name</th><th>E-Mail</th><th>Natel</th><th>Status</th><th>Kursteilnahme</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(r.participants?.first_name)} ${esc(r.participants?.last_name)}</td><td>${esc(r.participants?.email)}</td><td>${esc(r.participants?.phone)}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${r.status === 'registered' ? attendanceButtons(r.id,r.attendance_status) : ''}</td><td>${r.status === 'cancelled' ? `<button class="danger participant-action" onclick="adminDeleteRegistration('${r.id}')">Entfernen</button>` : `<button class="danger participant-action" onclick="cancelRegistration('${r.id}')">Abmelden</button>`}</td></tr>`).join('')}</tbody></table></div>`;
   } else {
     const visibleRows=rows.filter(r=>r.status==='registered' || r.status==='cancelled');
-    $('trainingDetail').innerHTML=`<button class="secondary" style="margin-bottom:10px" onclick="showNextTrainingOverview()">← Zurück zu Next Training</button><p><b>${esc(fmt(selectedTraining))}</b></p><p class="muted">Belegt: ${selectedTraining.registration_count}/${selectedTraining.max_participants}</p>${selectedTraining.notes?`<p>${esc(selectedTraining.notes)}</p>`:''}${selectedTraining.registration_count>=selectedTraining.max_participants?'':'<button class="success" style="margin:12px 0 10px" onclick="openReg(\'${selectedTraining.id}\')">Anmelden</button>'}<h3>Teilnehmer</h3>${visibleRows.length?`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Status</th><th></th></tr></thead><tbody>${visibleRows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(r.participants?.first_name || '')} ${esc(r.participants?.last_name || '')}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${r.status === 'registered' ? renderCancelCell(r.id) : ''}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Noch keine Teilnehmer eingetragen.</p>'}`;
+    $('trainingDetail').innerHTML=`<button class="secondary" style="margin-bottom:10px" onclick="showNextTrainingOverview()">← Zurück zu Next Training</button><p><b>${esc(fmt(selectedTraining))}</b></p><p class="muted">Belegt: ${selectedTraining.registration_count}/${selectedTraining.max_participants}</p>${selectedTraining.notes?`<p>${esc(selectedTraining.notes)}</p>`:''}${renderSignupButton(selectedTraining,false,'margin:12px 0 10px')}<h3>Teilnehmer</h3>${visibleRows.length?`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Status</th><th></th></tr></thead><tbody>${visibleRows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(r.participants?.first_name || '')} ${esc(r.participants?.last_name || '')}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${r.status === 'registered' ? renderCancelCell(r.id) : ''}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Noch keine Teilnehmer eingetragen.</p>'}`;
   }
 }
 function openReg(id){
   selectedTraining=trainings.find(t=>t.id===id);
   const isStaffUser = ['admin','trainer'].includes(currentProfile?.role);
+  if(!selectedTraining) return alert('Training nicht gefunden.');
+  if(!isStaffUser && trainingIsFull(selectedTraining)){
+    return alert('Dieses Training ist bereits ausgebucht.');
+  }
   if(!isStaffUser && !publicChangeWindowOpen(selectedTraining)){
     return alert('Änderungen sind nicht mehr möglich. Platz freigeben ist nur bis 48 Stunden nach dem Training möglich.');
   }
