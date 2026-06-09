@@ -949,11 +949,8 @@ async function cancelRegistration(id){
   // - Weniger als 48h vor Trainingsbeginn bis 48h nach Trainingsende: Platz wird nur freigegeben.
   // - Trainer halten dieselbe 48h-Regel ein wie Teilnehmer.
   // - Admin darf weiterhin direkt entfernen, falls eine manuelle Korrektur nötig ist.
-  // Admin darf Anmeldungen nur noch im Admin-Bereich ändern/löschen.
-  if(isAdminUser && currentView!=='admin'){
-    return alert('Abmeldungen können durch den Admin nur in der Adminansicht geändert oder gelöscht werden.');
-  }
-
+  // Admin in der Useransicht verhält sich wie ein normaler User.
+  // Admin-Sonderrecht zum direkten Löschen gilt nur in der Adminansicht.
   if(moreThan48hBeforeStart || (isAdminUser && currentView==='admin')){
     const {error}=await supabaseClient.from('registrations').delete().eq('id',id);
     if(error)return alert('Supabase Fehler: '+error.message);
