@@ -1525,6 +1525,7 @@ async function shareTeacherParticipantsWhatsapp(trainingId){
 async function loadTeacher(){
   const d=$('teacherDate').value;
   const todays=trainings.filter(t=>t.date===d);
+  const multipleTrainings=todays.length>1;
   let html='';
   await loadMemberOptions();
 
@@ -1543,29 +1544,50 @@ async function loadTeacher(){
 
     const rows=(data||[]).filter(r=>r.status==='registered' || r.status==='cancelled');
     const canEditThisTraining = canStaffEditTraining(t);
+    const bodyId='teacher_body_'+String(t.id).replace(/[^0-9A-Za-z_-]/g,'_');
+    const isCollapsed=multipleTrainings;
+
     html+=`<div class="training">
-      <h3>${esc(fmt(t))}</h3>
-      <p class="muted">${rows.filter(r=>r.status==='registered').length}/${t.max_participants}</p>
-      <div class="box" style="margin:12px 0;background:#eff6ff;border-color:#bfdbfe">
-        <h3>Teilnehmer hinzufügen</h3>
-        ${canEditThisTraining ? `<button class="success" onclick="teacherAddParticipant('${t.id}')">Teilnehmer hinzufügen</button>` : `<p class="muted">Dieses Training kann durch den Tennislehrer nicht mehr bearbeitet werden. Änderungen sind nur noch durch den Admin möglich.</p>`}
+      <div onclick="toggleTeacherTraining('${bodyId}')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div>
+          <h3 style="margin:0">${esc(fmt(t))}</h3>
+          <p class="muted" style="margin:4px 0 0">${rows.filter(r=>r.status==='registered').length}/${t.max_participants} Teilnehmer</p>
+        </div>
+        <strong id="${bodyId}_arrow">${isCollapsed?'▼':'▲'}</strong>
       </div>
-      <div class="box" style="margin:12px 0;background:#f0fdf4;border-color:#bbf7d0">
-        <h3>WhatsApp Teilnehmerliste</h3>
-        ${teacherWhatsappAvailable(t) ? `<button class="success" onclick="shareTeacherParticipantsWhatsapp('${t.id}')">Teilnehmerliste via WhatsApp senden</button>` : `<p class="muted">Die WhatsApp-Liste ist erst 48 Stunden vor Trainingsbeginn verfügbar.</p>`}
+
+      <div id="${bodyId}" class="${isCollapsed?'hidden':''}" style="margin-top:12px">
+        <div class="box" style="margin:12px 0;background:#eff6ff;border-color:#bfdbfe">
+          <h3>Teilnehmer hinzufügen</h3>
+          ${canEditThisTraining ? `<button class="success" onclick="event.stopPropagation();teacherAddParticipant('${t.id}')">Teilnehmer hinzufügen</button>` : `<p class="muted">Dieses Training kann durch den Tennislehrer nicht mehr bearbeitet werden. Änderungen sind nur noch durch den Admin möglich.</p>`}
+        </div>
+
+        <div class="box" style="margin:12px 0;background:#f0fdf4;border-color:#bbf7d0">
+          <h3>WhatsApp Teilnehmerliste</h3>
+          ${teacherWhatsappAvailable(t) ? `<button class="success" onclick="event.stopPropagation();shareTeacherParticipantsWhatsapp('${t.id}')">Teilnehmerliste via WhatsApp senden</button>` : `<p class="muted">Die WhatsApp-Liste ist erst 48 Stunden vor Trainingsbeginn verfügbar.</p>`}
+        </div>
+
+        ${rows.length?`<div class="table-wrap"><table class="teacher-table"><thead><tr><th>Name</th><th>Kursteilnahme</th><th>Änderung</th></tr></thead><tbody>${rows.map(r=>{
+          const p=r.participants||{};
+          return `<tr class="${r.status === 'cancelled' ? 'released-row' : ''}">
+            <td>${esc(p.first_name||'')} ${esc(p.last_name||'')}</td>
+            <td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : (canEditThisTraining ? attendanceCheckbox(r.id,r.attendance_status) : '<span class="muted">Nur Admin</span>')}</td>
+            <td>${canEditThisTraining ? (r.status === 'cancelled' ? `<button class="success participant-action" onclick="event.stopPropagation();openTrainerChangeParticipant('${r.id}','${t.id}')">Platz neu besetzen</button>` : `<button class="secondary participant-action" onclick="event.stopPropagation();openTrainerChangeParticipant('${r.id}','${t.id}')">Neuen Teilnehmer eintragen</button>`) : '<span class="muted">Nur Admin</span>'}</td>
+          </tr>`;
+        }).join('')}</tbody></table></div>`:'<p class="muted">Keine Teilnehmer.</p>'}
       </div>
-      ${rows.length?`<div class="table-wrap"><table class="teacher-table"><thead><tr><th>Name</th><th>Kursteilnahme</th><th>Änderung</th></tr></thead><tbody>${rows.map(r=>{
-        const p=r.participants||{};
-        return `<tr class="${r.status === 'cancelled' ? 'released-row' : ''}">
-          <td>${esc(p.first_name||'')} ${esc(p.last_name||'')}</td>
-          <td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : (canEditThisTraining ? attendanceCheckbox(r.id,r.attendance_status) : '<span class="muted">Nur Admin</span>')}</td>
-          <td>${canEditThisTraining ? (r.status === 'cancelled' ? `<button class="success participant-action" onclick="openTrainerChangeParticipant('${r.id}','${t.id}')">Platz neu besetzen</button>` : `<button class="secondary participant-action" onclick="openTrainerChangeParticipant('${r.id}','${t.id}')">Neuen Teilnehmer eintragen</button>`) : '<span class="muted">Nur Admin</span>'}</td>
-        </tr>`;
-      }).join('')}</tbody></table></div>`:'<p class="muted">Keine Teilnehmer.</p>'}
     </div>`;
   }
 
   $('teacherList').innerHTML=html||'<p class="muted">Für dieses Datum sind keine Trainings vorhanden.</p>';
+}
+
+function toggleTeacherTraining(bodyId){
+  const body=document.getElementById(bodyId);
+  const arrow=document.getElementById(bodyId+'_arrow');
+  if(!body) return;
+  body.classList.toggle('hidden');
+  if(arrow) arrow.textContent=body.classList.contains('hidden') ? '▼' : '▲';
 }
 
 async function deleteParticipantsList(){
