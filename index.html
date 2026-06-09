@@ -1050,8 +1050,8 @@ function participantLabel(p){
   return `${p.first_name||''} ${p.last_name||''}`.trim();
 }
 function participantSort(a,b){
-  const an=((a.last_name||'')+' '+(a.first_name||'')).toLowerCase();
-  const bn=((b.last_name||'')+' '+(b.first_name||'')).toLowerCase();
+  const an=((a.first_name||'')+' '+(a.last_name||'')).toLowerCase();
+  const bn=((b.first_name||'')+' '+(b.last_name||'')).toLowerCase();
   return an.localeCompare(bn,'de');
 }
 
