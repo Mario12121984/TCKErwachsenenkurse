@@ -127,8 +127,9 @@ body{overflow-x:hidden}.container{width:100%}img{max-width:100%;height:auto}
       <section id="adminCreateCard" class="card hidden"><h2>Neues Training erstellen</h2><div class="grid"><div><label>Datum</label><input id="trainingDate" type="date"></div><div><label>Von</label><input id="trainingStart" type="time"></div><div><label>Bis</label><input id="trainingEnd" type="time"></div><div><label>Max. Teilnehmer</label><input id="trainingLimit" type="number" min="1" value="12"></div></div><label>Notizen</label><textarea id="trainingNotes"></textarea><button id="saveTraining">Training speichern</button></section>
       <section class="card">
         <div class="box" style="margin-bottom:14px;background:#f0fdf4;border-color:#bbf7d0">
-          <button id="showMemberTrainingsBtn" class="secondary">Meine Trainings</button><button id="showNextTrainingBtn" class="secondary">Next Training</button>
+          <button id="showMemberTrainingsBtn" class="secondary">Meine Trainings</button>
           <div id="memberExportBox" class="hidden">
+
             <label>Teilnehmer auswählen</label>
             <select id="memberExportSelect" autocomplete="off"><option value="">Bitte auswählen...</option></select>
             <div class="actions">
@@ -136,6 +137,7 @@ body{overflow-x:hidden}.container{width:100%}img{max-width:100%;height:auto}
               <button id="exportMemberIcsBtn" class="secondary">Gebuchte Kurse ins Outlook übernehmen</button>
             </div>
           </div>
+          <button id="showNextTrainingBtn" class="secondary">Next Training</button>
         </div>
         <h2>Trainingseinheiten</h2><div id="trainingList"></div></section>
     </div>
@@ -231,6 +233,7 @@ let currentProfile=null, currentView='user', trainings=[], selectedTraining=null
 let pendingRegistration=null, pendingTckMember=false, pendingWhatsapp=false, selectedExistingParticipantId=null, pendingCancelRegistrationId=null;
 let selectedTrainingRegisteredParticipantIds=new Set();
 let teacherOpenTrainingIds=new Set();
+let pendingCancelFromMemberTrainings=false;
 const $=id=>document.getElementById(id); const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
 
 function enhanceResponsiveTables(){
@@ -664,9 +667,20 @@ function answerWhatsapp(value){
 function renderMultiTrainingChoices(){
   if(!pendingRegistration||!selectedTraining){$('multiTrainingList').innerHTML='';return;}
   const selectedId=selectedTraining.id;
-  const available=trainings.filter(t=>t.id!==selectedId);
+  const now = new Date();
+  const available=trainings
+    .filter(t=>{
+      if(t.id===selectedId) return false;
+      const end = trainingEndsAt(t) || trainingStartsAt(t);
+      return end && end.getTime() >= now.getTime();
+    })
+    .sort((a,b)=>{
+      const ad=trainingStartsAt(a)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const bd=trainingStartsAt(b)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return ad-bd;
+    });
   if(!available.length){
-    $('multiTrainingList').innerHTML='<p class="muted">Keine weiteren Trainings vorhanden.</p>';
+    $('multiTrainingList').innerHTML='<p class="muted">Keine weiteren kommenden Trainings vorhanden.</p>';
     return;
   }
   $('multiTrainingList').innerHTML=available.map(t=>`
@@ -942,7 +956,7 @@ async function adminDeleteRegistration(id){
   if(selectedTraining) await selectTraining(selectedTraining.id);
 }
 
-async function cancelRegistration(id){
+async function cancelRegistration(id, options={}){
   if(!selectedTraining) return;
 
   const isAdminUser = currentProfile?.role === 'admin';
@@ -970,8 +984,13 @@ async function cancelRegistration(id){
     if(error)return alert('Supabase Fehler: '+error.message);
     alert(moreThan48hBeforeStart ? 'Die Anmeldung wurde entfernt, da die 48h-Regel eingehalten wurde.' : 'Admin-Korrektur: Die Anmeldung wurde entfernt.');
     await loadTrainings();
-    if(selectedTraining) await selectTraining(selectedTraining.id);
+    if(options.fromMemberTrainings){
+      await renderSelectedMemberTrainings();
+    } else if(selectedTraining) {
+      await selectTraining(selectedTraining.id);
+    }
   } else {
+    pendingCancelFromMemberTrainings = options.fromMemberTrainings === true;
     pendingCancelRegistrationId=id;
     $('cancel48Modal').classList.add('show');
   }
@@ -994,12 +1013,19 @@ async function confirmCancelWithin48h(){
   if(error)return alert('Platz konnte nicht freigegeben werden. Supabase Fehler: '+error.message+'\n\nPrüfe die UPDATE Policy auf registrations.');
   alert('Du bist abgemeldet. Dein Platz wurde freigegeben.');
   await loadTrainings();
-  if(selectedTraining) await selectTraining(selectedTraining.id);
+  const returnToMemberTrainings = pendingCancelFromMemberTrainings === true;
+  pendingCancelFromMemberTrainings = false;
+  if(returnToMemberTrainings){
+    await renderSelectedMemberTrainings();
+  } else if(selectedTraining) {
+    await selectTraining(selectedTraining.id);
+  }
 }
 
 
 function abortCancelWithin48h(){
   pendingCancelRegistrationId=null;
+  pendingCancelFromMemberTrainings=false;
   $('cancel48Modal').classList.remove('show');
 }
 async function addSelectedParticipantToTraining(){
@@ -1220,8 +1246,8 @@ async function cancelMemberTraining(registrationId, trainingId){
     selectedTraining=oldSelected;
     return;
   }
-  await cancelRegistration(registrationId);
-  await renderSelectedMemberTrainings();
+  await cancelRegistration(registrationId,{fromMemberTrainings:true});
+  selectedTraining=oldSelected;
 }
 
 async function getSelectedMemberRegistrations(showAlert=true){
