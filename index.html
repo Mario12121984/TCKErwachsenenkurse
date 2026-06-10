@@ -99,6 +99,89 @@ body{overflow-x:hidden}.container{width:100%}img{max-width:100%;height:auto}
 .belegt-status.free{color:#16a34a}
 .belegt-status.full{color:#dc2626}
 
+.training.past{
+  background:#f3f4f6;
+  border-color:#d1d5db;
+  color:#6b7280;
+  opacity:.82;
+}
+.training.past:hover{
+  background:#f3f4f6;
+}
+.training.past.active{
+  background:#e5e7eb;
+  border:2px solid #9ca3af;
+  box-shadow:none;
+}
+.training.past strong{
+  color:#4b5563;
+}
+.training.past .belegt-status{
+  color:#6b7280!important;
+}
+.past-badge{
+  display:inline-block;
+  margin-top:7px;
+  padding:4px 9px;
+  border-radius:999px;
+  background:#e5e7eb;
+  color:#4b5563;
+  font-size:12px;
+  font-weight:bold;
+}
+
+#detailCard{
+  transition:margin-top .18s ease;
+}
+
+@media(max-width:850px){
+  #detailCard{
+    margin-top:10px!important;
+  }
+}
+
+
+/* Rechte Anzeige bündig oben halten */
+#detailCard{
+  margin-top:0!important;
+}
+
+
+/* Rechte Spalte beim Scrollen sichtbar halten */
+@media(min-width:851px){
+  #mainLayout > div:nth-child(2){
+    position:sticky;
+    top:12px;
+    align-self:start;
+    max-height:calc(100vh - 24px);
+    overflow-y:auto;
+    padding-right:4px;
+  }
+
+  #mainLayout > div:nth-child(2)::-webkit-scrollbar{
+    width:8px;
+  }
+
+  #mainLayout > div:nth-child(2)::-webkit-scrollbar-thumb{
+    background:#cbd5e1;
+    border-radius:999px;
+  }
+
+  #detailCard{
+    margin-top:0!important;
+    margin-bottom:14px;
+  }
+}
+
+@media(max-width:850px){
+  #mainLayout > div:nth-child(2){
+    position:static;
+    max-height:none;
+    overflow:visible;
+    padding-right:0;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -143,14 +226,16 @@ body{overflow-x:hidden}.container{width:100%}img{max-width:100%;height:auto}
     </div>
     <div>
       <section id="adminPanel" class="card hidden"><h2>Admin Einstellungen</h2><div id="summary" class="summary"></div><hr><h3>Admin / Trainer erstellen</h3><p class="muted">Hier erstellt ein Admin neue Admins oder Trainer direkt online. Die sichtbare Anmeldung läuft über Benutzername + Passwort; intern wird automatisch eine technische E-Mail-Adresse erzeugt.</p><div class="grid"><div><label>Name</label><input id="staffFullName" placeholder="Mario Wasescha"></div><div><label>Benutzername</label><input id="staffUsername" placeholder="mario"></div><div><label>Einfaches Passwort</label><input id="staffPassword" type="password" placeholder="z.B. 1234"></div><div><label>Rolle</label><select id="staffRole"><option value="trainer">Trainer</option><option value="admin">Admin</option></select></div></div><button id="createStaffBtn" class="success">Admin / Trainer online erstellen</button><p class="muted">Hinweis: Das Passwort wird nicht in dieser HTML-Datei gespeichert. Die Erstellung erfolgt über eine Supabase Edge Function.</p><div id="profilesList"></div><hr><h3>Teilnehmer importieren/exportieren</h3><button id="exportParticipantsBtn" class="secondary">Teilnehmer CSV exportieren</button><button id="exportVisitsBtn" class="secondary">Trainingsbesuche CSV exportieren</button><label>Teilnehmer CSV importieren</label><input id="importParticipantsFile" type="file" accept=".csv,text/csv"><p class="muted">CSV: Name;E-Mail;Telefonnummer oder Vorname;Nachname;E-Mail;Telefonnummer. E-Mail darf leer sein.</p><button id="deleteParticipantsListBtn" class="danger">Teilnehmer Liste löschen</button><p class="muted">Löscht alle Teilnehmer inklusive bestehender Anmeldungen.</p><hr><h3>App Text</h3><label>Titel</label><input id="settingsTitle"><label>Kommentar</label><textarea id="settingsComment"></textarea><label>Logo als Bilddatei</label><input id="settingsLogo" type="file" accept="image/*"><button id="saveSettings" class="secondary">Einstellungen lokal speichern</button></section>
-      <section class="card"><h2 id="detailTitle">Next Training</h2><div id="trainingDetail"><p class="muted">Wähle links ein Training aus.</p></div></section>
+      <section id="detailCard" class="card"><h2 id="detailTitle">Next Training</h2><div id="trainingDetail"><p class="muted">Wähle links ein Training aus.</p></div></section>
       <section id="participantsCard" class="card hidden"><h2>Teilnehmerliste</h2><button id="reloadParticipants" class="secondary">Aktualisieren</button><div id="participantsList"></div></section>
     </div>
   </div>
 </div>
 
 <div id="regModal" class="modal"><div class="modal-box"><h2>Anmeldung</h2><p id="regInfo" class="muted"></p>
-<label>Vorname</label><div class="suggestion-wrap"><input id="firstName" placeholder="Max" autocomplete="off" required><div id="participantSuggestionList" class="suggestion-list"></div></div>
+<label>Bestehenden Teilnehmer auswählen</label>
+<select id="knownParticipantSelect"><option value="">Bitte auswählen...</option></select>
+<label>Vorname</label><input id="firstName" placeholder="Vorname" autocomplete="given-name" required>
 <label>Nachname</label><input id="lastName" placeholder="Muster" autocomplete="family-name" required>
 <label>E-Mail</label><input id="email" type="email" placeholder="max.muster@bluewin.ch" autocomplete="email" required title="Bitte eine gültige E-Mail-Adresse mit @ eingeben.">
 <label>Natelnummer</label><input id="phone" placeholder="+41 79 795 40 23" autocomplete="tel" required title="Bitte mit europäischer Landesvorwahl eingeben, z.B. +41 79 792 23 95.">
@@ -315,7 +400,7 @@ function setView(v){
   $('adminViewBtn').classList.toggle('hidden',!isAdmin);
   $('userViewBtn').classList.toggle('hidden',!currentProfile);
   if(v==='teacher') loadTeacher();
-  if(v==='admin'){loadMemberOptions();loadParticipants();loadProfiles();renderSummary()}
+  if(v==='admin'){loadMemberOptions();loadParticipants();loadProfiles();renderSummary(); if($('detailCard')) $('detailCard').style.marginTop='14px'}
   currentView=v;
   renderTrainings();
   if(selectedTraining) selectTraining(selectedTraining.id);
@@ -404,6 +489,7 @@ function toggleMonth(key){
   if(!el) return;
   el.classList.toggle('open');
   if(arrow) arrow.textContent=el.classList.contains('open')?'▲':'▼';
+  setTimeout(alignDetailToSelectedTraining,30);
 }
 
 function renderTrainings(){
@@ -413,7 +499,8 @@ function renderTrainings(){
   let html='';
   const todayIso=isoToday();
   const todayMonth=todayIso.slice(0,7);
-  const selectedMonth=selectedTraining?.date ? String(selectedTraining.date).slice(0,7) : (groups[todayMonth] ? todayMonth : Object.keys(groups)[0]);
+  const highlightTraining=currentTrainingForHighlight();
+  const selectedMonth=selectedTraining?.date ? String(selectedTraining.date).slice(0,7) : (highlightTraining?.date ? String(highlightTraining.date).slice(0,7) : (groups[todayMonth] ? todayMonth : Object.keys(groups)[0]));
   Object.keys(groups).sort().forEach(key=>{
     const safe=String(key).replace(/[^0-9A-Za-z_-]/g,'_');
     const open=key===selectedMonth;
@@ -424,16 +511,27 @@ function renderTrainings(){
       const adminActions = showAdminActions
         ? `<button class="secondary" onclick="event.stopPropagation();openEditTraining('${t.id}')">Bearbeiten</button><button class="warning" onclick="event.stopPropagation();copyTraining('${t.id}')">Kopieren</button><button class="danger" onclick="event.stopPropagation();deleteTraining('${t.id}')">Löschen</button>`
         : '';
-      const isActiveTraining = selectedTraining ? selectedTraining.id===t.id : t.date===todayIso;
-      html+=`<div class="training ${isActiveTraining?'active':''}" onclick="selectTraining('${t.id}')">
-        <strong>${esc(fmt(t))}</strong>
-        <p class="${belegungClass(t)}">Belegt: ${t.registration_count}/${t.max_participants}</p>
-        ${t.notes?`<p>${esc(t.notes)}</p>`:''}
-        <div class="actions">
-          ${renderSignupButton(t,true)}
-          ${adminActions}
-        </div>
-      </div>`;
+      // Blau markiert wird das angewählte Training. Wenn noch nichts angewählt ist,
+      // wird automatisch das aktuelle bzw. nächste Training markiert.
+      const isActiveTraining = selectedTraining ? selectedTraining.id===t.id : (highlightTraining ? highlightTraining.id===t.id : t.date===todayIso);
+      const isPastTraining = trainingIsPast(t);
+      if(isPastTraining && currentView==='user'){
+        html+=`<div class="training past ${isActiveTraining?'active':''}" data-training-id="${esc(t.id)}" onclick="selectTraining('${t.id}')">
+          <strong>${esc(fmtDateDMY(t.date))}</strong>
+          <div class="past-badge">Beendet</div>
+        </div>`;
+      } else {
+        html+=`<div class="training ${isActiveTraining?'active':''} ${isPastTraining?'past':''}" data-training-id="${esc(t.id)}" onclick="selectTraining('${t.id}')">
+          <strong>${esc(fmt(t))}</strong>
+          ${isPastTraining ? '<div class="past-badge">Beendet</div>' : ''}
+          <p class="${belegungClass(t)}">Belegt: ${t.registration_count}/${t.max_participants}</p>
+          ${t.notes?`<p>${esc(t.notes)}</p>`:''}
+          <div class="actions">
+            ${renderSignupButton(t,true)}
+            ${adminActions}
+          </div>
+        </div>`;
+      }
     });
     html+='</div>';
   });
@@ -457,6 +555,8 @@ function upcomingNextTrainings(limit=5){
 
 function renderNextTrainingsOverview(){
   if(currentView!=='user' || selectedTraining) return;
+  const detailCard=$('detailCard');
+  if(detailCard) detailCard.style.marginTop='14px';
   const nextTrainings=upcomingNextTrainings(5);
   $('detailTitle').textContent='Next Training';
   if(!nextTrainings.length){
@@ -485,6 +585,21 @@ function scrollToDetailOnMobile(){
     },100);
   }
 }
+
+function alignDetailToSelectedTraining(){
+  const detailCard=$('detailCard');
+  if(!detailCard) return;
+
+  // Desktop: Die gesamte rechte Spalte ist sticky und scrollbar.
+  // Deshalb bleibt die Liste immer vollständig erreichbar.
+  detailCard.style.marginTop = window.innerWidth > 850 ? '0px' : '10px';
+}
+
+function resetDetailCardTop(){
+  const detailCard=$('detailCard');
+  if(detailCard) detailCard.style.marginTop = window.innerWidth > 850 ? '0px' : '10px';
+}
+
 
 async function selectTraining(id){
   selectedTraining=trainings.find(t=>t.id===id)||null;
@@ -529,8 +644,10 @@ async function selectTraining(id){
     const visibleRows=rows.filter(r=>r.status==='registered' || r.status==='cancelled');
     $('trainingDetail').innerHTML=`<button class="secondary" style="margin-bottom:10px" onclick="showNextTrainingOverview()">← Zurück zu Next Training</button><p><b>${esc(fmt(selectedTraining))}</b></p><p class="muted">Belegt: ${selectedTraining.registration_count}/${selectedTraining.max_participants}</p>${selectedTraining.notes?`<p>${esc(selectedTraining.notes)}</p>`:''}${renderSignupButton(selectedTraining,false,'margin:12px 0 10px')}<h3>Teilnehmer</h3>${visibleRows.length?`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Status</th><th></th></tr></thead><tbody>${visibleRows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(r.participants?.first_name || '')} ${esc(r.participants?.last_name || '')}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${r.status === 'registered' ? renderCancelCell(r.id) : ''}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Noch keine Teilnehmer eingetragen.</p>'}`;
   }
+
+  setTimeout(alignDetailToSelectedTraining,30);
 }
-function openReg(id){
+async function openReg(id){
   selectedTraining=trainings.find(t=>t.id===id);
   const isStaffUser = ['admin','trainer'].includes(currentProfile?.role);
   if(!selectedTraining) return alert('Training nicht gefunden.');
@@ -540,10 +657,17 @@ function openReg(id){
   if(!isStaffUser && !publicChangeWindowOpen(selectedTraining)){
     return alert('Änderungen sind nicht mehr möglich. Platz freigeben ist nur bis 48 Stunden nach dem Training möglich.');
   }
+
+  // Für das Dropdown zuerst alle Teilnehmer und die bereits angemeldeten Teilnehmer dieser Einheit laden.
+  if(!participantCache.length) await loadMemberOptions();
+  await loadRegisteredParticipantIdsForTraining(selectedTraining.id);
+
   selectedExistingParticipantId=null;
+  ['firstName','lastName','email','phone'].forEach(fieldId=>{ if($(fieldId)) $(fieldId).value=''; });
+  if($('knownParticipantSelect')) $('knownParticipantSelect').value='';
   $('regInfo').textContent=fmt(selectedTraining);
   populateKnownParticipantSelect();
-  $('regModal').classList.add('show')
+  $('regModal').classList.add('show');
 }
 
 
@@ -599,6 +723,33 @@ function isEuropeanPhoneNumber(phone){
 function beginRegistrationFlow(){
   if(!selectedTraining)return;
   clearInputErrors();
+
+  const selectedFromDropdown = $('knownParticipantSelect')?.value || '';
+  if(selectedFromDropdown) selectedExistingParticipantId = selectedFromDropdown;
+
+  const existingParticipant = selectedExistingParticipantId
+    ? (participantCache||[]).find(p=>p.id===selectedExistingParticipantId)
+    : null;
+
+  // Wenn ein bestehender Teilnehmer im Dropdown gewählt wurde,
+  // wird er direkt angemeldet. Es werden keine Pflichtfeld-Fehler angezeigt.
+  if(existingParticipant){
+    pendingRegistration={
+      first_name:existingParticipant.first_name || '',
+      last_name:existingParticipant.last_name || '',
+      email:existingParticipant.email || '',
+      phone:existingParticipant.phone || '',
+      participantId:existingParticipant.id,
+      trainingIds:[selectedTraining.id]
+    };
+    pendingTckMember=existingParticipant.tck_member===true;
+    pendingWhatsapp=existingParticipant.whatsapp_allowed===true;
+    $('regModal').classList.remove('show');
+    renderMultiTrainingChoices();
+    $('multiModal').classList.add('show');
+    return;
+  }
+
   const first_name=$('firstName').value.trim(), last_name=$('lastName').value.trim(), email=$('email').value.trim();
   const phoneInput=$('phone').value.trim();
   const phone=normalizedPhoneForValidation(phoneInput);
@@ -629,22 +780,20 @@ function beginRegistrationFlow(){
   // Für Supabase wird die Natelnummer ohne Leerzeichen gespeichert, z.B. +41797954023.
   $('phone').value=phone;
 
-  const existingParticipant =
-    (selectedExistingParticipantId ? participantCache.find(p=>p.id===selectedExistingParticipantId) : null) ||
-    (email ? participantCache.find(p=>String(p.email||'').trim().toLowerCase() === email.toLowerCase()) : null) ||
-    null;
+  const existingByEmail =
+    email ? participantCache.find(p=>String(p.email||'').trim().toLowerCase() === email.toLowerCase()) : null;
 
-  if(existingParticipant){
+  if(existingByEmail){
     pendingRegistration={
-      first_name:first_name || existingParticipant.first_name || '',
-      last_name:last_name || existingParticipant.last_name || '',
-      email:email || existingParticipant.email || '',
-      phone:phone || existingParticipant.phone || '',
-      participantId:existingParticipant.id,
+      first_name:first_name || existingByEmail.first_name || '',
+      last_name:last_name || existingByEmail.last_name || '',
+      email:email || existingByEmail.email || '',
+      phone:phone || existingByEmail.phone || '',
+      participantId:existingByEmail.id,
       trainingIds:[selectedTraining.id]
     };
-    pendingTckMember=existingParticipant.tck_member===true;
-    pendingWhatsapp=existingParticipant.whatsapp_allowed===true;
+    pendingTckMember=existingByEmail.tck_member===true;
+    pendingWhatsapp=existingByEmail.whatsapp_allowed===true;
     $('regModal').classList.remove('show');
     renderMultiTrainingChoices();
     $('multiModal').classList.add('show');
@@ -853,6 +1002,39 @@ function trainingEndsAt(t){
   return isNaN(d.getTime()) ? trainingStartsAt(t) : d;
 }
 
+function trainingIsPast(t){
+  const end=trainingEndsAt(t) || trainingStartsAt(t);
+  return end ? end.getTime() < Date.now() : false;
+}
+
+function currentTrainingForHighlight(){
+  if(!trainings.length) return null;
+  const now=Date.now();
+
+  // 1. Wenn gerade ein Training läuft, dieses markieren.
+  const running=trainings
+    .filter(t=>{
+      const start=trainingStartsAt(t);
+      const end=trainingEndsAt(t) || start;
+      return start && end && start.getTime() <= now && now <= end.getTime();
+    })
+    .sort((a,b)=>(trainingStartsAt(a)?.getTime()||0)-(trainingStartsAt(b)?.getTime()||0))[0];
+
+  if(running) return running;
+
+  // 2. Sonst das nächste kommende Training markieren.
+  return trainings
+    .filter(t=>{
+      const end=trainingEndsAt(t) || trainingStartsAt(t);
+      return end && end.getTime() >= now;
+    })
+    .sort((a,b)=>{
+      const ad=trainingStartsAt(a)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const bd=trainingStartsAt(b)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return ad-bd;
+    })[0] || null;
+}
+
 function canStaffEditTraining(t){
   if(currentProfile?.role === 'admin') return true;
   if(currentProfile?.role === 'trainer') return publicChangeWindowOpen(t);
@@ -931,6 +1113,9 @@ async function participantHasWeeklyRegistrationBeforeFirstTraining(participantId
 }
 
 function renderCancelCell(registrationId){
+  if(trainingIsPast(selectedTraining)){
+    return '';
+  }
   if(!publicChangeWindowOpen(selectedTraining)){
     return '<span class="muted">Nur Admin</span>';
   }
@@ -1137,9 +1322,69 @@ function statusLabel(status){
   return status || '';
 }
 
-function populateKnownParticipantSelect(){
-  renderParticipantSuggestions();
+async function loadRegisteredParticipantIdsForTraining(trainingId){
+  selectedTrainingRegisteredParticipantIds = new Set();
+  if(!trainingId) return;
+
+  const {data,error}=await supabaseClient
+    .from('registrations')
+    .select('status,participants(id)')
+    .eq('training_id',trainingId)
+    .eq('status','registered');
+
+  if(error){
+    console.warn('Angemeldete Teilnehmer konnten für das Dropdown nicht geladen werden:', error.message);
+    return;
+  }
+
+  selectedTrainingRegisteredParticipantIds = new Set(
+    (data||[]).map(r=>r.participants?.id).filter(Boolean)
+  );
 }
+
+function availableParticipantOptions(){
+  return participantCache
+    .filter(p=>!selectedTraining || !selectedTrainingRegisteredParticipantIds.has(p.id))
+    .sort((a,b)=>participantLabel(a).localeCompare(participantLabel(b),'de'));
+}
+
+function populateKnownParticipantSelect(){
+  const select=$('knownParticipantSelect');
+  if(!select) return;
+
+  const alreadyRegistered = selectedTrainingRegisteredParticipantIds || new Set();
+
+  const available = (participantCache || [])
+    .filter(p=>p && p.id && !alreadyRegistered.has(p.id))
+    .sort((a,b)=>participantLabel(a).localeCompare(participantLabel(b),'de'));
+
+  select.innerHTML =
+    '<option value="">Bitte auswählen...</option>' +
+    available.map(p=>`<option value="${esc(p.id)}">${esc(participantLabel(p))}</option>`).join('');
+
+  if(!available.length){
+    select.innerHTML = '<option value="">Keine verfügbaren Teilnehmer</option>';
+  }
+}
+
+function onKnownParticipantSelectChange(){
+  const id=$('knownParticipantSelect')?.value || '';
+  selectedExistingParticipantId=id || null;
+
+  if(!id){
+    ['firstName','lastName','email','phone'].forEach(fieldId=>{ if($(fieldId)) $(fieldId).value=''; });
+    return;
+  }
+
+  const p=(participantCache||[]).find(x=>x.id===id);
+  if(!p) return;
+
+  $('firstName').value=p.first_name || '';
+  $('lastName').value=p.last_name || '';
+  $('email').value=p.email || '';
+  $('phone').value=p.phone || '';
+}
+
 
 function matchesParticipantQuery(p, query){
   const q=String(query||'').trim().toLowerCase();
@@ -1151,17 +1396,22 @@ function matchesParticipantQuery(p, query){
 }
 
 function renderParticipantSuggestions(){
+  if(!$('participantSuggestionList')) return;
   const box=$('participantSuggestionList');
   const input=$('firstName');
   if(!box || !input) return;
   const q=input.value.trim();
-  if(q.length < 1){ box.classList.remove('show'); box.innerHTML=''; return; }
-  const hits=participantCache
-    .filter(p=>matchesParticipantQuery(p,q))
-    .filter(p=>!selectedTraining || !selectedTrainingRegisteredParticipantIds.has(p.id))
-    .sort((a,b)=>participantLabel(a).localeCompare(participantLabel(b)))
-    .slice(0,10);
-  if(!hits.length){ box.classList.remove('show'); box.innerHTML=''; return; }
+
+  // Dropdown zeigt nur Teilnehmer, die für diese Trainingseinheit noch nicht aktiv angemeldet sind.
+  let hits=availableParticipantOptions();
+  if(q.length >= 1) hits=hits.filter(p=>matchesParticipantQuery(p,q));
+  hits=hits.slice(0,60);
+
+  if(!hits.length){
+    box.innerHTML='<div class="suggestion-item"><strong>Keine verfügbaren Teilnehmer gefunden</strong><span>Bereits angemeldete Teilnehmer werden hier nicht angezeigt.</span></div>';
+    box.classList.add('show');
+    return;
+  }
   box.innerHTML=hits.map(p=>`<div class="suggestion-item" data-participant-id="${esc(p.id)}"><strong>${esc(participantLabel(p))}</strong><span>${esc(p.phone||p.email||'')}</span></div>`).join('');
   box.classList.add('show');
 }
@@ -1199,6 +1449,7 @@ function populateMemberExportSelect(keepSelection=false){
 
 
 async function renderSelectedMemberTrainings(){
+  resetDetailCardTop();
   const participantId=$('memberExportSelect').value;
   if(!participantId){
     $('detailTitle').textContent='Meine gebuchten Trainings';
@@ -1317,6 +1568,12 @@ function toggleMemberExportBox(){
   if(!$('memberExportBox').classList.contains('hidden')) {
     $('detailTitle').textContent='Meine gebuchten Trainings';
     $('trainingDetail').innerHTML='<p class="muted">Bitte links einen Teilnehmer auswählen.</p>';
+
+    // Meine gebuchten Trainings immer zuoberst anzeigen
+    const topCard=document.querySelector('#mainLayout > div:first-child .card');
+    if(topCard){
+      topCard.scrollIntoView({behavior:'smooth',block:'start'});
+    }
   }
 }
 
@@ -1895,6 +2152,7 @@ function saveSettingsLocal(){const s={title:$('settingsTitle').value,comment:$('
 
 
 function showNextTrainingOverview(){
+  resetDetailCardTop();
   selectedTraining = null;
   currentView = 'user';
   $('memberExportBox').classList.add('hidden');
@@ -1978,6 +2236,11 @@ function bindAppEvents(){
 
 bindAppEvents();
 init();
+window.addEventListener('resize',alignDetailToSelectedTraining);
+document.addEventListener('DOMContentLoaded',()=>{
+  if($('knownParticipantSelect')) $('knownParticipantSelect').addEventListener('change',onKnownParticipantSelectChange);
+});
+window.addEventListener('resize',alignDetailToSelectedTraining);
 </script>
 </body>
 </html>
