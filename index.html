@@ -482,8 +482,6 @@ async function selectTraining(id){
   selectedTraining=trainings.find(t=>t.id===id)||null;
   renderTrainings();
 
-  scrollToDetailOnMobile();
-
   if(!selectedTraining)return;
   if(!participantCache.length) await loadMemberOptions();
 
@@ -1289,7 +1287,6 @@ function toggleMemberExportBox(){
     $('detailTitle').textContent='Meine gebuchten Trainings';
     $('trainingDetail').innerHTML='<p class="muted">Bitte links einen Teilnehmer auswählen.</p>';
   }
-  scrollToDetailOnMobile();
 }
 
 async function loadProfiles(){
