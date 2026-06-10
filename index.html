@@ -291,6 +291,8 @@ function belegungClass(t){
 }
 function renderSignupButton(t, stopPropagation=false, extraStyle=''){
   if(trainingIsFull(t)) return '';
+  const start=trainingStartsAt(t);
+  if(start && Date.now() > start.getTime() + 10*60*1000) return '';
   if(!publicChangeWindowOpen(t)) return '';
   const stop = stopPropagation ? 'event.stopPropagation();' : '';
   const style = extraStyle ? ` style="${extraStyle}"` : '';
