@@ -235,11 +235,11 @@ body{overflow-x:hidden}.container{width:100%}img{max-width:100%;height:auto}
 <div id="regModal" class="modal"><div class="modal-box"><h2>Anmeldung</h2><p id="regInfo" class="muted"></p>
 <label>Bestehenden Teilnehmer auswählen</label>
 <select id="knownParticipantSelect"><option value="">Bitte auswählen...</option></select>
-<label>Vorname</label><input id="firstName" placeholder="Vorname" autocomplete="given-name" required>
+<div id="newParticipantFields"><label>Vorname</label><input id="firstName" placeholder="Vorname" autocomplete="given-name" required>
 <label>Nachname</label><input id="lastName" placeholder="Muster" autocomplete="family-name" required>
 <label>E-Mail</label><input id="email" type="email" placeholder="max.muster@bluewin.ch" autocomplete="email" required title="Bitte eine gültige E-Mail-Adresse mit @ eingeben.">
 <label>Natelnummer</label><input id="phone" placeholder="+41 79 795 40 23" autocomplete="tel" required title="Bitte mit europäischer Landesvorwahl eingeben, z.B. +41 79 792 23 95.">
-<div class="actions"><button id="confirmReg" class="success">Jetzt eintragen</button><button id="cancelReg" class="secondary">Abbrechen</button></div></div></div>
+</div><div class="actions"><button id="confirmReg" class="success">Jetzt eintragen</button><button id="cancelReg" class="secondary">Abbrechen</button></div></div></div>
 
 <div id="tckModal" class="modal"><div class="modal-box" style="max-width:420px;text-align:center"><h2>TCK Mitglied?</h2><p>Bist du TCK Mitglied?</p><div class="actions"><button id="tckYesBtn" class="success">Ja</button><button id="tckNoBtn" class="secondary">Nein</button></div></div></div>
 
@@ -319,7 +319,26 @@ let pendingRegistration=null, pendingTckMember=false, pendingWhatsapp=false, sel
 let selectedTrainingRegisteredParticipantIds=new Set();
 let teacherOpenTrainingIds=new Set();
 let pendingCancelFromMemberTrainings=false;
-const $=id=>document.getElementById(id); const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
+const $=id=>document.getElementById(id);
+
+function toggleParticipantFields(){
+  const sel=document.getElementById('knownParticipantSelect');
+  const box=document.getElementById('newParticipantFields');
+  if(!sel || !box) return;
+
+  if(sel.value){
+    box.style.display='none';
+  }else{
+    box.style.display='block';
+  }
+}
+
+document.addEventListener('change',function(e){
+  if(e.target && e.target.id==='knownParticipantSelect'){
+    toggleParticipantFields();
+  }
+});
+ const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
 
 function enhanceResponsiveTables(){
   document.querySelectorAll('table').forEach(table=>{
@@ -666,11 +685,37 @@ async function openReg(id){
   ['firstName','lastName','email','phone'].forEach(fieldId=>{ if($(fieldId)) $(fieldId).value=''; });
   if($('knownParticipantSelect')) $('knownParticipantSelect').value='';
   $('regInfo').textContent=fmt(selectedTraining);
-  populateKnownParticipantSelect();
+  populateKnownParticipantSelect(); setTimeout(toggleParticipantFields,0);
   $('regModal').classList.add('show');
 }
 
 
+
+
+function normalizeParticipantNamePart(value){
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,' ');
+}
+
+function participantNameAlreadyRegisteredForSelectedTraining(firstName,lastName){
+  const first=normalizeParticipantNamePart(firstName);
+  const last=normalizeParticipantNamePart(lastName);
+  if(!first || !last) return false;
+
+  return (participantCache || []).some(p=>{
+    if(!p || !p.id) return false;
+    if(!selectedTrainingRegisteredParticipantIds.has(p.id)) return false;
+
+    const pFirst=normalizeParticipantNamePart(p.first_name);
+    const pLast=normalizeParticipantNamePart(p.last_name);
+
+    return pFirst===first && pLast===last;
+  });
+}
 
 function clearInputErrors(){
   ['firstName','lastName','email','phone'].forEach(id=>{
@@ -755,6 +800,15 @@ function beginRegistrationFlow(){
   const phone=normalizedPhoneForValidation(phoneInput);
   const validationMessages=[];
   let focusId='';
+
+  // Jeder Teilnehmer darf pro Training nur einmal in der Teilnehmerliste stehen.
+  // Falls Vor- und Nachname bereits für diese Trainingseinheit vorhanden sind,
+  // wird die Anmeldung gestoppt.
+  if(participantNameAlreadyRegisteredForSelectedTraining(first_name,last_name)){
+    markInputError('firstName');
+    markInputError('lastName');
+    return showValidationPopup(['Benutzer bereits vorhanden'], 'firstName');
+  }
 
   if(!first_name){ validationMessages.push('Bitte gib deinen Vornamen ein.'); markInputError('firstName'); focusId ||= 'firstName'; }
   if(!last_name){ validationMessages.push('Bitte gib deinen Nachnamen ein.'); markInputError('lastName'); focusId ||= 'lastName'; }
@@ -879,6 +933,29 @@ async function completeRegistration(useMulti){
 
   let saved=0, errors=[];
   for(const trainingId of pendingRegistration.trainingIds){
+    const tCheck=trainings.find(x=>x.id===trainingId);
+    if(tCheck){
+      const {data:nameRows,error:nameErr}=await supabaseClient
+        .from('registrations')
+        .select('id,status,participants(first_name,last_name)')
+        .eq('training_id',trainingId)
+        .eq('status','registered');
+
+      if(!nameErr){
+        const firstNorm=normalizeParticipantNamePart(first_name);
+        const lastNorm=normalizeParticipantNamePart(last_name);
+        const duplicateName=(nameRows||[]).some(r=>{
+          const p=r.participants||{};
+          return normalizeParticipantNamePart(p.first_name)===firstNorm &&
+                 normalizeParticipantNamePart(p.last_name)===lastNorm;
+        });
+        if(duplicateName){
+          errors.push('Benutzer bereits vorhanden' + (tCheck ? ' ('+fmt(tCheck)+')' : '') + '.');
+          continue;
+        }
+      }
+    }
+
     const blockedByWeeklyRule = await participantHasWeeklyRegistrationBeforeFirstTraining(participantId, trainingId);
     if(blockedByWeeklyRule){
       const t=trainings.find(x=>x.id===trainingId);
@@ -911,7 +988,7 @@ async function completeRegistration(useMulti){
             await cleanupReleasedSeat(trainingId);
           }
         } else {
-          errors.push('Dieser Teilnehmer ist für ein ausgewähltes Training bereits angemeldet.');
+          errors.push('Benutzer bereits vorhanden.');
         }
       } else {
         errors.push(error.message);
@@ -1297,7 +1374,7 @@ async function loadMemberOptions(){
   const {data,error}=await supabaseClient.from('participants').select('*').order('last_name').limit(1000);
   if(error){ participantCache=[]; return; }
   participantCache=(data||[]).sort(participantSort);
-  populateKnownParticipantSelect();
+  populateKnownParticipantSelect(); setTimeout(toggleParticipantFields,0);
   populateMemberExportSelect();
 }
 
