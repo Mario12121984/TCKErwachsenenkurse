@@ -481,6 +481,17 @@ function scrollToDetailOnMobile(){
   }
 }
 
+function scrollToTrainingListOnMobile(){
+  if(window.innerWidth <= 850){
+    setTimeout(()=>{
+      const el=document.getElementById('trainingList');
+      if(!el) return;
+      const y=el.getBoundingClientRect().top + window.pageYOffset - 70;
+      window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
+    },100);
+  }
+}
+
 async function selectTraining(id){
   selectedTraining=trainings.find(t=>t.id===id)||null;
   renderTrainings();
@@ -1211,7 +1222,7 @@ async function renderSelectedMemberTrainings(){
 
   const name=participantLabel(p) || 'Teilnehmer';
   $('trainingDetail').innerHTML=`<p><b>${esc(name)}</b></p>${rows.length?`<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Von</th><th>Bis</th><th>Notizen</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(fmtDateDMY(r.trainings?.date))}</td><td>${esc(String(r.trainings?.start_time||'').slice(0,5))}</td><td>${esc(String(r.trainings?.end_time||'').slice(0,5))}</td><td>${esc(r.trainings?.notes||'')}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${renderMemberCancelCell(r)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Keine gebuchten Trainings vorhanden.</p>'}`;
-  scrollToDetailOnMobile();
+  scrollToTrainingListOnMobile();
 }
 
 function registrationTrainingObject(registrationRow){
@@ -1896,8 +1907,7 @@ function showNextTrainingOverview(){
   clearSelectedMember();
   renderTrainings();
   renderNextTrainingsOverview();
-  const detail = $('trainingDetail');
-  if(detail) detail.scrollIntoView({behavior:'smooth', block:'start'});
+  scrollToTrainingListOnMobile();
 }
 
 function toggleViewMenu(){ $('viewMenu').classList.toggle('show'); }
