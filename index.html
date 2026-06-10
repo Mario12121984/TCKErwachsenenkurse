@@ -476,15 +476,7 @@ function renderNextTrainingsOverview(){
 function scrollToDetailOnMobile(){
   if(window.innerWidth <= 850){
     setTimeout(()=>{
-      document.getElementById('detailTitle')?.scrollIntoView({behavior:'smooth',block:'start'});
-    },100);
-  }
-}
-
-function scrollToTrainingListOnMobile(){
-  if(window.innerWidth <= 850){
-    setTimeout(()=>{
-      const el=document.getElementById('trainingList');
+      const el=document.getElementById('detailTitle');
       if(!el) return;
       const y=el.getBoundingClientRect().top + window.pageYOffset - 70;
       window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
@@ -1222,7 +1214,7 @@ async function renderSelectedMemberTrainings(){
 
   const name=participantLabel(p) || 'Teilnehmer';
   $('trainingDetail').innerHTML=`<p><b>${esc(name)}</b></p>${rows.length?`<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Von</th><th>Bis</th><th>Notizen</th><th>Status</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(fmtDateDMY(r.trainings?.date))}</td><td>${esc(String(r.trainings?.start_time||'').slice(0,5))}</td><td>${esc(String(r.trainings?.end_time||'').slice(0,5))}</td><td>${esc(r.trainings?.notes||'')}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${renderMemberCancelCell(r)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Keine gebuchten Trainings vorhanden.</p>'}`;
-  scrollToTrainingListOnMobile();
+  scrollToDetailOnMobile();
 }
 
 function registrationTrainingObject(registrationRow){
@@ -1907,7 +1899,7 @@ function showNextTrainingOverview(){
   clearSelectedMember();
   renderTrainings();
   renderNextTrainingsOverview();
-  scrollToTrainingListOnMobile();
+  scrollToDetailOnMobile();
 }
 
 function toggleViewMenu(){ $('viewMenu').classList.toggle('show'); }
