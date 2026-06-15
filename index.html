@@ -225,7 +225,8 @@ body{overflow-x:hidden}.container{width:100%}img{max-width:100%;height:auto}
         <h2>Trainingseinheiten</h2><div id="trainingList"></div></section>
     </div>
     <div>
-      <section id="adminPanel" class="card hidden"><h2>Admin Einstellungen</h2><div id="summary" class="summary"></div><hr><h3>Admin / Trainer erstellen</h3><p class="muted">Hier erstellt ein Admin neue Admins oder Trainer direkt online. Die sichtbare Anmeldung läuft über Benutzername + Passwort; intern wird automatisch eine technische E-Mail-Adresse erzeugt.</p><div class="grid"><div><label>Name</label><input id="staffFullName" placeholder="Mario Wasescha"></div><div><label>Benutzername</label><input id="staffUsername" placeholder="mario"></div><div><label>Einfaches Passwort</label><input id="staffPassword" type="password" placeholder="z.B. 1234"></div><div><label>Rolle</label><select id="staffRole"><option value="trainer">Trainer</option><option value="admin">Admin</option></select></div></div><button id="createStaffBtn" class="success">Admin / Trainer online erstellen</button><p class="muted">Hinweis: Das Passwort wird nicht in dieser HTML-Datei gespeichert. Die Erstellung erfolgt über eine Supabase Edge Function.</p><div id="profilesList"></div><hr><h3>Teilnehmer importieren/exportieren</h3><button id="exportParticipantsBtn" class="secondary">Teilnehmer CSV exportieren</button><button id="exportVisitsBtn" class="secondary">Trainingsbesuche CSV exportieren</button><label>Teilnehmer CSV importieren</label><input id="importParticipantsFile" type="file" accept=".csv,text/csv"><p class="muted">CSV: Name;E-Mail;Telefonnummer oder Vorname;Nachname;E-Mail;Telefonnummer. E-Mail darf leer sein.</p><button id="deleteParticipantsListBtn" class="danger">Teilnehmer Liste löschen</button><p class="muted">Löscht alle Teilnehmer inklusive bestehender Anmeldungen.</p><hr><h3>App Text</h3><label>Titel</label><input id="settingsTitle"><label>Kommentar</label><textarea id="settingsComment"></textarea><label>Logo als Bilddatei</label><input id="settingsLogo" type="file" accept="image/*"><button id="saveSettings" class="secondary">Einstellungen lokal speichern</button></section>
+      <section id="adminPanel" class="card hidden"><h2>Admin Einstellungen</h2><div id="summary" class="summary"></div><hr><h3>Admin / Trainer erstellen</h3><p class="muted">Hier erstellt ein Admin neue Admins oder Trainer direkt online. Die sichtbare Anmeldung läuft über Benutzername + Passwort; intern wird automatisch eine technische E-Mail-Adresse erzeugt.</p><div class="grid"><div><label>Name</label><input id="staffFullName" placeholder="Mario Wasescha"></div><div><label>Benutzername</label><input id="staffUsername" placeholder="mario"></div><div><label>Einfaches Passwort</label><input id="staffPassword" type="password" placeholder="z.B. 1234"></div><div><label>Rolle</label><select id="staffRole"><option value="trainer">Trainer</option><option value="admin">Admin</option></select></div></div><button id="createStaffBtn" class="success">Admin / Trainer online erstellen</button><p class="muted">Hinweis: Das Passwort wird nicht in dieser HTML-Datei gespeichert. Die Erstellung erfolgt über eine Supabase Edge Function.</p><div id="profilesList"></div><hr><h3>Teilnehmer importieren/exportieren</h3><button id="exportParticipantsBtn" class="secondary">Teilnehmer CSV exportieren</button><button id="exportVisitsBtn" class="secondary">Trainingsbesuche CSV exportieren</button><label>Teilnehmer CSV importieren</label><input id="importParticipantsFile" type="file" accept=".csv,text/csv"><p class="muted">CSV: Name;E-Mail;Telefonnummer oder Vorname;Nachname;E-Mail;Telefonnummer. E-Mail darf leer sein.</p><button id="deleteParticipantsListBtn" class="danger">Teilnehmer Liste löschen</button>
+<button id="deleteAllTrainingsBtn" class="danger">Alle Trainings löschen</button><p class="muted">Löscht alle Teilnehmer inklusive bestehender Anmeldungen.</p><hr><h3>App Text</h3><label>Titel</label><input id="settingsTitle"><label>Kommentar</label><textarea id="settingsComment"></textarea><label>Logo als Bilddatei</label><input id="settingsLogo" type="file" accept="image/*"><button id="saveSettings" class="secondary">Einstellungen lokal speichern</button></section>
       <section id="detailCard" class="card"><h2 id="detailTitle">Next Training</h2><div id="trainingDetail"><p class="muted">Wähle links ein Training aus.</p></div></section>
       <section id="participantsCard" class="card hidden"><h2>Teilnehmerliste</h2><button id="reloadParticipants" class="secondary">Aktualisieren</button><div id="participantsList"></div></section>
     </div>
@@ -1056,6 +1057,21 @@ async function copyTraining(id){
   if(error) return alert('Training konnte nicht kopiert werden: '+error.message);
   await loadTrainings();
   renderSummary();
+}
+
+
+async function deleteAllTrainings(){
+  if(currentProfile?.role!=='admin') return alert('Nur Admin.');
+  if(!confirm('Wirklich ALLE Trainings und Anmeldungen löschen?')) return;
+
+  const {error}=await supabaseClient.from('trainings').delete().neq('id','00000000-0000-0000-0000-000000000000');
+
+  if(error) return alert('Fehler: '+error.message);
+
+  selectedTraining=null;
+  await loadTrainings();
+  renderSummary();
+  alert('Alle Trainings wurden gelöscht.');
 }
 
 async function deleteTraining(id){if(!confirm('Training wirklich löschen?'))return; const {error}=await supabaseClient.from('trainings').delete().eq('id',id); if(error)return alert('Supabase Fehler: '+error.message); selectedTraining=null; await loadTrainings(); renderSummary()}
@@ -2321,3 +2337,6 @@ window.addEventListener('resize',alignDetailToSelectedTraining);
 </script>
 </body>
 </html>
+
+
+<script>document.addEventListener('DOMContentLoaded',()=>{const b=document.getElementById('deleteAllTrainingsBtn'); if(b) b.onclick=deleteAllTrainings;});</script>
