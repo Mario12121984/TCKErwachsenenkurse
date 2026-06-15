@@ -2283,10 +2283,11 @@ function bindAppEvents(){
   if($('exportParticipantsBtn')) $('exportParticipantsBtn').onclick=exportParticipants;
   if($('exportVisitsBtn')) $('exportVisitsBtn').onclick=exportVisits;
   if($('importParticipantsFile')) {
-  $('importParticipantsFile').addEventListener('change', e => {
-    const file = e.target.files && e.target.files[0];
-    if(file) importParticipants(file);
-  });
+    $('importParticipantsFile').addEventListener('change', e => {
+      const file = e.target.files && e.target.files[0];
+      if(file) importParticipants(file);
+    });
+  }
   if($('deleteParticipantsListBtn')) $('deleteParticipantsListBtn').onclick=deleteParticipantsList;
   if($('saveSettings')) $('saveSettings').onclick=saveSettingsLocal;
   if($('createStaffBtn')) $('createStaffBtn').onclick=createStaffUser;
