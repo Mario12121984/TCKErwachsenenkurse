@@ -181,6 +181,86 @@ body{overflow-x:hidden}.container{width:100%}img{max-width:100%;height:auto}
   }
 }
 
+
+/* Mobile: öffentliche Teilnehmerliste kompakt darstellen */
+@media(max-width:850px){
+  .user-participants-table.responsive-table,
+  .user-participants-table.responsive-table tbody,
+  .user-participants-table.responsive-table tr,
+  .user-participants-table.responsive-table td{
+    display:revert;
+    width:auto;
+  }
+
+  .user-participants-table.responsive-table{
+    border-collapse:separate;
+    border-spacing:0 6px;
+    margin-top:6px;
+  }
+
+  .user-participants-table.responsive-table thead{
+    display:none!important;
+  }
+
+  .user-participants-table.responsive-table .user-participant-row{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    align-items:center!important;
+    gap:8px!important;
+    padding:7px 8px!important;
+    margin:6px 0!important;
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,.04);
+  }
+
+  .user-participants-table.responsive-table .user-participant-row.is-registered .user-participant-status{
+    display:none!important;
+  }
+
+  .user-participants-table.responsive-table .user-participant-row.is-cancelled{
+    grid-template-columns:minmax(0,1fr) auto!important;
+  }
+
+  .user-participants-table.responsive-table .user-participant-row.is-cancelled .user-participant-action{
+    display:none!important;
+  }
+
+  .user-participants-table.responsive-table .user-participant-name,
+  .user-participants-table.responsive-table .user-participant-status,
+  .user-participants-table.responsive-table .user-participant-action{
+    display:block!important;
+    border:0!important;
+    padding:0!important;
+    white-space:normal!important;
+  }
+
+  .user-participants-table.responsive-table td::before{
+    display:none!important;
+    content:none!important;
+  }
+
+  .user-participants-table.responsive-table .user-participant-name{
+    font-weight:bold;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .user-participants-table.responsive-table .user-participant-action{
+    justify-self:end!important;
+  }
+
+  .user-participants-table.responsive-table .user-participant-action .participant-action{
+    width:auto!important;
+    min-width:92px!important;
+    min-height:34px!important;
+    padding:6px 10px!important;
+    margin:0!important;
+    white-space:nowrap!important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -663,7 +743,7 @@ async function selectTraining(id){
       <div class="table-wrap"><table><thead><tr><th>Name</th><th>E-Mail</th><th>Natel</th><th>Status</th><th>Kursteilnahme</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(r.participants?.first_name)} ${esc(r.participants?.last_name)}</td><td>${esc(r.participants?.email)}</td><td>${esc(r.participants?.phone)}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${r.status === 'registered' ? attendanceButtons(r.id,r.attendance_status) : ''}</td><td>${r.status === 'cancelled' ? `<button class="danger participant-action" onclick="adminDeleteRegistration('${r.id}')">Entfernen</button>` : `<button class="danger participant-action" onclick="cancelRegistration('${r.id}')">Abmelden</button>`}</td></tr>`).join('')}</tbody></table></div>`;
   } else {
     const visibleRows=rows.filter(r=>r.status==='registered' || r.status==='cancelled');
-    $('trainingDetail').innerHTML=`<button class="secondary" style="margin-bottom:10px" onclick="showNextTrainingOverview()">← Zurück zu Next Training</button><p><b>${esc(fmt(selectedTraining))}</b></p><p class="muted">Belegt: ${selectedTraining.registration_count}/${selectedTraining.max_participants}</p>${selectedTraining.notes?`<p>${esc(selectedTraining.notes)}</p>`:''}${renderSignupButton(selectedTraining,false,'margin:12px 0 10px')}<h3>Teilnehmer</h3>${visibleRows.length?`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Status</th><th></th></tr></thead><tbody>${visibleRows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(r.participants?.first_name || '')} ${esc(r.participants?.last_name || '')}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${r.status === 'registered' ? renderCancelCell(r.id) : ''}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Noch keine Teilnehmer eingetragen.</p>'}`;
+    $('trainingDetail').innerHTML=`<button class="secondary" style="margin-bottom:10px" onclick="showNextTrainingOverview()">← Zurück zu Next Training</button><p><b>${esc(fmt(selectedTraining))}</b></p><p class="muted">Belegt: ${selectedTraining.registration_count}/${selectedTraining.max_participants}</p>${selectedTraining.notes?`<p>${esc(selectedTraining.notes)}</p>`:''}${renderSignupButton(selectedTraining,false,'margin:12px 0 10px')}<h3>Teilnehmer</h3>${visibleRows.length?`<div class="table-wrap"><table class="user-participants-table"><thead><tr><th>Name</th><th>Status</th><th></th></tr></thead><tbody>${visibleRows.map(r=>`<tr class="user-participant-row ${r.status === 'cancelled' ? 'released-row is-cancelled' : 'is-registered'}"><td class="user-participant-name">${esc(r.participants?.first_name || '')} ${esc(r.participants?.last_name || '')}</td><td class="user-participant-status">${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td class="user-participant-action">${r.status === 'registered' ? renderCancelCell(r.id) : ''}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Noch keine Teilnehmer eingetragen.</p>'}`;
   }
 
   setTimeout(alignDetailToSelectedTraining,30);
