@@ -261,6 +261,22 @@ body{overflow-x:hidden}.container{width:100%}img{max-width:100%;height:auto}
   }
 }
 
+/* Mobile: Navigation in der Teilnehmerliste */
+.participant-nav-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:12px 0 10px;
+}
+.participant-nav-actions button{
+  margin:0;
+}
+@media(max-width:480px){
+  .participant-nav-actions{
+    grid-template-columns:1fr;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -676,15 +692,29 @@ function renderNextTrainingsOverview(){
     </div>`).join('');
 }
 
-function scrollToDetailOnMobile(){
+function scrollToElementOnMobile(el, offset=70){
   if(window.innerWidth <= 850){
     setTimeout(()=>{
-      const el=document.getElementById('participantListAnchor') || document.getElementById('detailCard') || document.getElementById('detailTitle');
       if(!el) return;
-      const y=el.getBoundingClientRect().top + window.pageYOffset - 70;
+      const y=el.getBoundingClientRect().top + window.pageYOffset - offset;
       window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
     },120);
   }
+}
+
+function scrollToDetailOnMobile(){
+  // Mobile: immer zur obersten Detailansicht springen.
+  // So sieht man zuerst, welches Training angewählt ist,
+  // und die Ansicht überspringt nicht direkt die Trainings-Info.
+  const el=document.getElementById('detailCard') || document.getElementById('detailTitle');
+  scrollToElementOnMobile(el,70);
+}
+
+function scrollToSelectedTrainingOnMobile(){
+  if(!selectedTraining) return;
+  renderTrainings();
+  const el=document.querySelector(`[data-training-id="${CSS.escape(String(selectedTraining.id))}"]`);
+  scrollToElementOnMobile(el,70);
 }
 
 function alignDetailToSelectedTraining(){
@@ -743,7 +773,7 @@ async function selectTraining(id){
       <div class="table-wrap"><table><thead><tr><th>Name</th><th>E-Mail</th><th>Natel</th><th>Status</th><th>Kursteilnahme</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.status === 'cancelled' ? 'released-row' : ''}"><td>${esc(r.participants?.first_name)} ${esc(r.participants?.last_name)}</td><td>${esc(r.participants?.email)}</td><td>${esc(r.participants?.phone)}</td><td>${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td>${r.status === 'registered' ? attendanceButtons(r.id,r.attendance_status) : ''}</td><td>${r.status === 'cancelled' ? `<button class="danger participant-action" onclick="adminDeleteRegistration('${r.id}')">Entfernen</button>` : `<button class="danger participant-action" onclick="cancelRegistration('${r.id}')">Abmelden</button>`}</td></tr>`).join('')}</tbody></table></div>`;
   } else {
     const visibleRows=rows.filter(r=>r.status==='registered' || r.status==='cancelled');
-    $('trainingDetail').innerHTML=`<button class="secondary" style="margin-bottom:10px" onclick="showNextTrainingOverview()">← Zurück zu Next Training</button><p><b>${esc(fmt(selectedTraining))}</b></p><p class="muted">Belegt: ${selectedTraining.registration_count}/${selectedTraining.max_participants}</p>${selectedTraining.notes?`<p>${esc(selectedTraining.notes)}</p>`:''}${renderSignupButton(selectedTraining,false,'margin:12px 0 10px')}<div id="participantListAnchor"></div><h3>Teilnehmer</h3>${visibleRows.length?`<div class="table-wrap"><table class="user-participants-table"><thead><tr><th>Name</th><th>Status</th><th></th></tr></thead><tbody>${visibleRows.map(r=>`<tr class="user-participant-row ${r.status === 'cancelled' ? 'released-row is-cancelled' : 'is-registered'}"><td class="user-participant-name">${esc(r.participants?.first_name || '')} ${esc(r.participants?.last_name || '')}</td><td class="user-participant-status">${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td class="user-participant-action">${r.status === 'registered' ? renderCancelCell(r.id) : ''}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Noch keine Teilnehmer eingetragen.</p>'}`;
+    $('trainingDetail').innerHTML=`<p><b>${esc(fmt(selectedTraining))}</b></p><p class="muted">Belegt: ${selectedTraining.registration_count}/${selectedTraining.max_participants}</p>${selectedTraining.notes?`<p>${esc(selectedTraining.notes)}</p>`:''}${renderSignupButton(selectedTraining,false,'margin:12px 0 10px')}<div id="participantListAnchor"></div><h3>Teilnehmer</h3><div class="participant-nav-actions"><button class="secondary" onclick="scrollToSelectedTrainingOnMobile()">← Zurück zum Training</button><button class="secondary" onclick="showNextTrainingOverview()">Next Training</button></div>${visibleRows.length?`<div class="table-wrap"><table class="user-participants-table"><thead><tr><th>Name</th><th>Status</th><th></th></tr></thead><tbody>${visibleRows.map(r=>`<tr class="user-participant-row ${r.status === 'cancelled' ? 'released-row is-cancelled' : 'is-registered'}"><td class="user-participant-name">${esc(r.participants?.first_name || '')} ${esc(r.participants?.last_name || '')}</td><td class="user-participant-status">${r.status === 'cancelled' ? '<span class="released-badge">Platz freigegeben</span>' : esc(statusLabel(r.status))}</td><td class="user-participant-action">${r.status === 'registered' ? renderCancelCell(r.id) : ''}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Noch keine Teilnehmer eingetragen.</p>'}`;
   }
 
   setTimeout(alignDetailToSelectedTraining,30);
