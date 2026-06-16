@@ -245,7 +245,9 @@ body{overflow-x:hidden}.container{width:100%}img{max-width:100%;height:auto}
 
 <div id="whatsappModal" class="modal"><div class="modal-box" style="max-width:420px;text-align:center"><h2>WhatsApp</h2><p>Hast du WhatsApp?</p><div class="actions"><button id="whatsappYesBtn" class="success">Ja</button><button id="whatsappNoBtn" class="secondary">Nein</button></div></div></div>
 
-<div id="multiModal" class="modal"><div class="modal-box"><h2>Mehrere Trainings anmelden?</h2><p class="muted">Das zuerst gewählte Training ist bereits ausgewählt. Bis zum Start der allerersten Trainingseinheit gilt: pro Teilnehmer nur eine Anmeldung pro Kalenderwoche. Danach gilt diese Einschränkung nicht mehr.</p><div id="multiTrainingList"></div><div class="actions"><button id="multiConfirmBtn" class="success">Auswahl anmelden</button><button id="multiSkipBtn" class="secondary">Nur dieses Training</button></div></div></div>
+<div id="askMultiModal" class="modal"><div class="modal-box" style="max-width:420px;text-align:center"><h2>Mehrere Trainings anmelden?</h2><p>Möchtest du dich für mehrere Trainings anmelden?</p><div class="actions"><button id="askMultiYesBtn" class="success">Ja</button><button id="askMultiNoBtn" class="secondary">Nein</button></div></div></div>
+
+<div id="multiModal" class="modal"><div class="modal-box"><h2>Trainingsauswahl</h2><p class="muted">Das zuerst gewählte Training ist bereits ausgewählt. Bis zum Start der allerersten Trainingseinheit gilt: pro Teilnehmer nur eine Anmeldung pro Kalenderwoche. Danach gilt diese Einschränkung nicht mehr.</p><div id="multiTrainingList"></div><div class="actions"><button id="multiConfirmBtn" class="success">Auswahl anmelden</button></div></div></div>
 
 <div id="successModal" class="modal"><div class="modal-box" style="max-width:380px;text-align:center"><h2>✅ Erfolgreich eingetragen</h2><p id="successText">Die Anmeldung wurde gespeichert.</p><button id="successOkBtn">OK</button></div></div>
 
@@ -790,8 +792,7 @@ function beginRegistrationFlow(){
     pendingTckMember=existingParticipant.tck_member===true;
     pendingWhatsapp=existingParticipant.whatsapp_allowed===true;
     $('regModal').classList.remove('show');
-    renderMultiTrainingChoices();
-    $('multiModal').classList.add('show');
+    showAskMultiModal();
     return;
   }
 
@@ -849,8 +850,7 @@ function beginRegistrationFlow(){
     pendingTckMember=existingByEmail.tck_member===true;
     pendingWhatsapp=existingByEmail.whatsapp_allowed===true;
     $('regModal').classList.remove('show');
-    renderMultiTrainingChoices();
-    $('multiModal').classList.add('show');
+    showAskMultiModal();
     return;
   }
 
@@ -868,8 +868,22 @@ function answerTck(value){
 function answerWhatsapp(value){
   pendingWhatsapp=value===true;
   $('whatsappModal').classList.remove('show');
-  renderMultiTrainingChoices();
-  $('multiModal').classList.add('show');
+  showAskMultiModal();
+}
+
+function showAskMultiModal(){
+  if(!pendingRegistration || !selectedTraining) return;
+  $('askMultiModal').classList.add('show');
+}
+
+function answerAskMulti(value){
+  $('askMultiModal').classList.remove('show');
+  if(value===true){
+    renderMultiTrainingChoices();
+    $('multiModal').classList.add('show');
+  }else{
+    completeRegistration(false);
+  }
 }
 
 function renderMultiTrainingChoices(){
@@ -2300,6 +2314,8 @@ function bindAppEvents(){
   if($('tckNoBtn')) $('tckNoBtn').onclick=()=>answerTck(false);
   if($('whatsappYesBtn')) $('whatsappYesBtn').onclick=()=>answerWhatsapp(true);
   if($('whatsappNoBtn')) $('whatsappNoBtn').onclick=()=>answerWhatsapp(false);
+  if($('askMultiYesBtn')) $('askMultiYesBtn').onclick=()=>answerAskMulti(true);
+  if($('askMultiNoBtn')) $('askMultiNoBtn').onclick=()=>answerAskMulti(false);
   if($('multiConfirmBtn')) $('multiConfirmBtn').onclick=()=>completeRegistration(true);
   if($('multiSkipBtn')) $('multiSkipBtn').onclick=()=>completeRegistration(false);
   if($('successOkBtn')) $('successOkBtn').onclick=()=>$('successModal').classList.remove('show');
