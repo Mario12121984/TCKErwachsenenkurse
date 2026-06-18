@@ -1733,7 +1733,16 @@ async function getSelectedMemberRegistrations(showAlert=true){
     .in('status',['registered','cancelled'])
     .order('created_at');
   if(error){ if(showAlert) alert('Export nicht möglich: '+error.message); return null; }
-  return data||[];
+
+  const rows = data || [];
+  // Meine gebuchten Trainings chronologisch sortieren:
+  // zuerst nach Trainingsdatum, danach nach Startzeit.
+  rows.sort((a,b)=>{
+    const ad = `${a.trainings?.date || ''} ${String(a.trainings?.start_time || '').slice(0,5)}`;
+    const bd = `${b.trainings?.date || ''} ${String(b.trainings?.start_time || '').slice(0,5)}`;
+    return ad.localeCompare(bd);
+  });
+  return rows;
 }
 
 async function exportSelectedMemberCsv(){
