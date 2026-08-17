@@ -321,7 +321,7 @@ body{overflow-x:hidden}.container{width:100%}img{max-width:100%;height:auto}
     </div>
     <div>
       <section id="adminPanel" class="card hidden"><h2>Admin Einstellungen</h2><div id="summary" class="summary"></div><hr><h3>Admin / Trainer erstellen</h3><p class="muted">Hier erstellt ein Admin neue Admins oder Trainer direkt online. Die sichtbare Anmeldung läuft über Benutzername + Passwort; intern wird automatisch eine technische E-Mail-Adresse erzeugt.</p><div class="grid"><div><label>Name</label><input id="staffFullName" placeholder="Mario Wasescha"></div><div><label>Benutzername</label><input id="staffUsername" placeholder="mario"></div><div><label>Einfaches Passwort</label><input id="staffPassword" type="password" placeholder="z.B. 1234"></div><div><label>Rolle</label><select id="staffRole"><option value="trainer">Trainer</option><option value="admin">Admin</option></select></div></div><button id="createStaffBtn" class="success">Admin / Trainer online erstellen</button><p class="muted">Hinweis: Das Passwort wird nicht in dieser HTML-Datei gespeichert. Die Erstellung erfolgt über eine Supabase Edge Function.</p><div id="profilesList"></div><hr><h3>Teilnehmer importieren/exportieren</h3><button id="exportParticipantsBtn" class="secondary">Teilnehmer CSV exportieren</button><button id="exportVisitsBtn" class="secondary">Trainingsbesuche CSV exportieren</button><label>Teilnehmer CSV importieren</label><input id="importParticipantsFile" type="file" accept=".csv,text/csv"><p class="muted">CSV: Name;E-Mail;Telefonnummer oder Vorname;Nachname;E-Mail;Telefonnummer. E-Mail darf leer sein.</p><button id="deleteParticipantsListBtn" class="danger">Teilnehmer Liste löschen</button>
-<button id="deleteAllTrainingsBtn" class="danger">Alle Trainings löschen</button><p class="muted">Löscht alle Teilnehmer inklusive bestehender Anmeldungen.</p><hr><h3>App Text</h3><label>Titel</label><input id="settingsTitle"><label>Kommentar</label><textarea id="settingsComment"></textarea><label>Logo als Bilddatei</label><input id="settingsLogo" type="file" accept="image/*"><button id="saveSettings" class="secondary">Einstellungen lokal speichern</button></section>
+<button id="deleteAllTrainingsBtn" class="danger">Alle Trainings löschen</button><p class="muted">Löscht alle Teilnehmer inklusive bestehender Anmeldungen.</p><hr><h3>App Text</h3><label>Titel</label><input id="settingsTitle"><label>Kommentar</label><textarea id="settingsComment"></textarea><label>Logo als Bilddatei</label><input id="settingsLogo" type="file" accept="image/*"><button id="saveSettings" class="secondary">Einstellungen für alle speichern</button></section>
       <section id="detailCard" class="card"><h2 id="detailTitle">Next Training</h2><div id="trainingDetail"><p class="muted">Wähle links ein Training aus.</p></div></section>
       <section id="participantsCard" class="card hidden"><h2>Teilnehmerliste</h2><button id="reloadParticipants" class="secondary">Aktualisieren</button><div id="participantsList"></div></section>
     </div>
@@ -504,7 +504,30 @@ function renderSignupButton(t, stopPropagation=false, extraStyle=''){
 
 function download(name,content,type='text/plain;charset=utf-8'){if(type.includes('csv')) content='\ufeff'+content; const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
 function csvCell(v){return '"'+String(v??'').replaceAll('"','""')+'"'}
-function applyLocalSettings(){const s=JSON.parse(localStorage.getItem('tck_settings')||'{}'); if(s.title){$('appTitle').textContent=s.title;$('settingsTitle').value=s.title} if(s.comment){$('appComment').textContent=s.comment;$('settingsComment').value=s.comment} if(s.logo){$('logo').src=s.logo;$('logo').style.display='block'}}
+async function loadAppSettings(){
+  const {data,error}=await supabaseClient.from('app_settings').select('title,comment,logo_url').eq('id',1).maybeSingle();
+  if(error){
+    console.warn('App-Einstellungen konnten nicht aus Supabase geladen werden:', error.message);
+    return;
+  }
+  if(!data) return;
+
+  if(data.title){
+    $('appTitle').textContent=data.title;
+    if($('settingsTitle')) $('settingsTitle').value=data.title;
+  }
+  if(data.comment){
+    $('appComment').textContent=data.comment;
+    if($('settingsComment')) $('settingsComment').value=data.comment;
+  }
+  if(data.logo_url){
+    $('logo').src=data.logo_url;
+    $('logo').style.display='block';
+  } else {
+    $('logo').removeAttribute('src');
+    $('logo').style.display='none';
+  }
+}
 function setView(v){
   currentView=v;
   const isAdmin=currentProfile?.role==='admin', isStaff=['admin','trainer'].includes(currentProfile?.role);
@@ -531,7 +554,7 @@ function staffModeRequested(){
 
 async function init(){
   initResponsiveEnhancements();
-  applyLocalSettings();
+  await loadAppSettings();
   $('teacherDate').value=isoToday();
 
   // Öffentliche Links starten IMMER ohne gespeicherten Admin-/Trainer-Benutzer.
@@ -2374,7 +2397,57 @@ async function importParticipants(file){
 }
 
 function exportCalendar(){let ics='BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//TCK Trainings//DE\n'; trainings.forEach(t=>{const ds=t.date.replaceAll('-','')+'T'+String(t.start_time).replaceAll(':','').slice(0,4)+'00'; const de=t.date.replaceAll('-','')+'T'+String(t.end_time).replaceAll(':','').slice(0,4)+'00'; ics+=`BEGIN:VEVENT\nUID:${t.id}@tck\nDTSTAMP:${new Date().toISOString().replace(/[-:]/g,'').split('.')[0]}Z\nDTSTART:${ds}\nDTEND:${de}\nSUMMARY:TCK Training\nDESCRIPTION:${(t.notes||'').replace(/\n/g,' ')}\nEND:VEVENT\n`}); ics+='END:VCALENDAR\n'; download('tck_trainings.ics',ics,'text/calendar;charset=utf-8')}
-function saveSettingsLocal(){const s={title:$('settingsTitle').value,comment:$('settingsComment').value}; const f=$('settingsLogo').files[0]; if(f){const r=new FileReader(); r.onload=()=>{s.logo=r.result;localStorage.setItem('tck_settings',JSON.stringify(s));applyLocalSettings()}; r.readAsDataURL(f)} else {const old=JSON.parse(localStorage.getItem('tck_settings')||'{}'); if(old.logo)s.logo=old.logo; localStorage.setItem('tck_settings',JSON.stringify(s)); applyLocalSettings()}}
+async function saveAppSettingsSupabase(){
+  if(currentProfile?.role!=='admin') return alert('Nur Admins dürfen die App-Einstellungen ändern.');
+
+  const title=$('settingsTitle').value.trim();
+  const comment=$('settingsComment').value.trim();
+  const file=$('settingsLogo').files?.[0] || null;
+  const button=$('saveSettings');
+  const oldButtonText=button?.textContent || 'Einstellungen für alle speichern';
+
+  try{
+    if(button){ button.disabled=true; button.textContent='Wird gespeichert...'; }
+
+    let {data:existing,error:readError}=await supabaseClient
+      .from('app_settings')
+      .select('logo_url')
+      .eq('id',1)
+      .maybeSingle();
+    if(readError) throw readError;
+
+    let logoUrl=existing?.logo_url || null;
+
+    if(file){
+      if(!file.type || !file.type.startsWith('image/')) throw new Error('Bitte eine gültige Bilddatei auswählen.');
+      if(file.size > 5*1024*1024) throw new Error('Das Logo darf maximal 5 MB groß sein.');
+
+      const ext=(file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g,'') || 'png';
+      const storagePath=`app-logo.${ext}`;
+      const {error:uploadError}=await supabaseClient.storage
+        .from('app-assets')
+        .upload(storagePath,file,{upsert:true,contentType:file.type,cacheControl:'3600'});
+      if(uploadError) throw uploadError;
+
+      const {data:publicData}=supabaseClient.storage.from('app-assets').getPublicUrl(storagePath);
+      logoUrl=publicData?.publicUrl ? `${publicData.publicUrl}?v=${Date.now()}` : null;
+    }
+
+    const {error:saveError}=await supabaseClient
+      .from('app_settings')
+      .upsert({id:1,title,comment,logo_url:logoUrl},{onConflict:'id'});
+    if(saveError) throw saveError;
+
+    await loadAppSettings();
+    $('settingsLogo').value='';
+    alert('Einstellungen wurden in Supabase gespeichert und sind jetzt für alle Benutzer sichtbar.');
+  }catch(error){
+    console.error(error);
+    alert('Einstellungen konnten nicht gespeichert werden: '+(error?.message || error));
+  }finally{
+    if(button){ button.disabled=false; button.textContent=oldButtonText; }
+  }
+}
 
 
 function showNextTrainingOverview(){
@@ -2422,7 +2495,7 @@ function bindAppEvents(){
     });
   }
   if($('deleteParticipantsListBtn')) $('deleteParticipantsListBtn').onclick=deleteParticipantsList;
-  if($('saveSettings')) $('saveSettings').onclick=saveSettingsLocal;
+  if($('saveSettings')) $('saveSettings').onclick=saveAppSettingsSupabase;
   if($('createStaffBtn')) $('createStaffBtn').onclick=createStaffUser;
 
   if($('todayBtn')) $('todayBtn').onclick=()=>{teacherOpenTrainingIds.clear();$('teacherDate').value=isoToday();loadTeacher()};
